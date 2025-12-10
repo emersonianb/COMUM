@@ -15,9 +15,6 @@ class MemoryManager:
     def save(self, data):
         self.path.write_text(json.dumps(data, indent=2))
 
-    # ----------------------------------------
-    # HISTÓRICO DO BOT
-    # ----------------------------------------
     def update_history(self, user_id, message, emotion):
         data = self.load()
         if user_id not in data:
@@ -43,9 +40,6 @@ class MemoryManager:
             return data[user_id].get("history", [])[-5:]
         return []
 
-    # ----------------------------------------
-    # PERFIL DO USUÁRIO
-    # ----------------------------------------
     def set_user_profile(self, user_id, nivel, modulo):
         data = self.load()
         if user_id not in data:
@@ -69,9 +63,6 @@ class MemoryManager:
             return data[user_id].get("profile", {})
         return {}
 
-    # ----------------------------------------
-    # ESTADO DE APRENDIZADO (LEARNING STATE)
-    # ----------------------------------------
     def get_learning_state(self, user_id):
         data = self.load()
         if user_id in data:
@@ -81,7 +72,6 @@ class MemoryManager:
     def update_learning_state(self, user_id, nivel=None, modulo_atual=None, ultimo_topico=None, emocao_recente=None, categoria_atual=None, **kwargs):
         data = self.load()
 
-        # 🔹 Garante que toda a estrutura exista
         if user_id not in data:
             data[user_id] = {
                 "history": [],
@@ -91,7 +81,6 @@ class MemoryManager:
 
         learning_state = data[user_id]["learning_state"]
 
-        # 🔹 Atualiza somente os valores enviados
         if nivel is not None:
             learning_state["nivel"] = nivel
         if modulo_atual is not None:
@@ -103,11 +92,9 @@ class MemoryManager:
         if categoria_atual is not None:
             learning_state["categoria_atual"] = categoria_atual
 
-        # 🔹 Atualiza quaisquer campos extras passados via kwargs
         for key, value in kwargs.items():
             learning_state[key] = value
 
-        # 🔹 Atualiza sempre a última modificação
         learning_state["updated_at"] = datetime.now().isoformat()
 
         self.save(data)

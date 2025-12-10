@@ -6,11 +6,10 @@ class EmotionAnalyser:
         try:
             self.llm = ChatGroq(
                 model=groq_model,
-                temperature=0.0,  # respostas objetivas
+                temperature=0.0,
                 api_key=os.getenv("GROQ_API_KEY")
             )
         except Exception:
-            # fallback automático
             print(f"Model {groq_model} not available, switching to default llama-3.3-70b-versatile")
             self.llm = ChatGroq(
                 model="llama-3.3-70b-versatile",

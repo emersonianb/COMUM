@@ -39,7 +39,6 @@ def rag_system(tmp_path):
     user_folder = tmp_path / "data" / "users" / user_id
     user_folder.mkdir(parents=True, exist_ok=True)
 
-    # cria o arquivo de vocabulario com conteúdo conhecido
     vocab_path = user_folder / "Vocabulario.json"
     vocab_path.write_text(json.dumps({
         "items": [
@@ -47,14 +46,12 @@ def rag_system(tmp_path):
         ]
     }), encoding="utf-8")
 
-    # Inicializa o RAG apontando para esse user_id
     return GuideRAG(user_id=str(user_folder.parts[-1]), categoria="vocabulario")
 
 def test_rag_index_and_query(rag_system):
     query = "supermarket"
     results = rag_system.query(query, k=1)
 
-    # valida a saída
     assert isinstance(results, str), "O retorno da consulta deve ser uma string"
     assert "supermarket" in results, "O resultado deve conter o termo consultado"
 
@@ -69,7 +66,6 @@ def llm_handler():
     """LLMHandler real, mas vamos mockar o método interno que chama Groq."""
     handler = LLMHandler()
 
-    # Patch interno para evitar chamadas externas
     handler.generate = MagicMock(return_value="Resposta simulada")
     return handler
 
@@ -78,6 +74,5 @@ def llm_handler():
 def emotion_analyser():
     analyser = EmotionAnalyser()
 
-    # Patch do método que chama o LLM
     analyser.analyse = MagicMock(return_value={"emotion": "neutral"})
     return analyser

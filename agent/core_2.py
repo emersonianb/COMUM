@@ -14,7 +14,7 @@ class AgenticTutor:
         self.memory = MemoryManager()
         self.llm = LLMHandler()
         self.rag = None
-        self.user_welcomed = {}  # controla boas-vindas por sessão
+        self.user_welcomed = {}
 
     def interpret_student_message(self, last_question, user_message):
         """
@@ -24,7 +24,7 @@ class AgenticTutor:
         - Introduzir novo tópico
         """
         if not last_question:
-            return "new_topic", None  # sem pergunta anterior → novo tópico
+            return "new_topic", None
 
         prompt = f"""
         Você é um mini-agente tutor. Analise a mensagem do aluno e indique ao tutor principal o que fazer.
@@ -59,7 +59,6 @@ class AgenticTutor:
             action, instruction = result.split("|", 1)
             return action.strip().upper(), instruction.strip()
         else:
-            # fallback caso o LLM não siga o formato
             return "NOVO_TOPICO", result.strip()
 
     def continue_mini_game(self, user_id):
@@ -115,7 +114,6 @@ class AgenticTutor:
         previous_words = [w.lower() for w in (self.memory.get_taught_words(user_id) or [])]
         previous_topics = [t.lower() for t in (self.memory.get_taught_topics(user_id) or [])]
 
-        # --- Mini-agente interpreta a mensagem do aluno ---
         ultima_pergunta = learning_state.get("ultima_pergunta", None)
         action, instruction = self.interpret_student_message(
             last_question=ultima_pergunta,
@@ -123,10 +121,8 @@ class AgenticTutor:
         )
 
         if action == "CONTINUAR":
-            # continua o tópico atual
             manter_topico = True
         else:
-            # novo tópico
             manter_topico = False
             self.memory.update_learning_state(user_id, ultimo_topico=message)
 

@@ -17,7 +17,6 @@ def fake_material_path(tmp_path):
 
 @pytest.fixture
 def rag_system(fake_material_path, tmp_path):
-    # cria pasta do usuário e copia o material
     user_folder = tmp_path / "user123"
     user_folder.mkdir()
     dest_path = user_folder / "Vocabulario.json"
@@ -32,6 +31,5 @@ def test_rag_index_and_query(rag_system):
     query = "supermarket"
     results = rag_system.query(query, k=1)
 
-    # valida a saída (como string)
     assert isinstance(results, str), "O retorno da consulta deve ser uma string"
     assert "supermarket" in results, "O resultado deve conter o termo consultado"

@@ -7,10 +7,8 @@ import json
 
 class GuideRAG:
     def __init__(self, user_id, categoria=None, max_items=5):
-        # pasta do usuário
         folder = Path(f"data/users/{user_id}")
 
-        # mapeamento da categoria para os arquivos JSON
         file_map = {
             "conversacao": "Conversacao.json",
             "gramatica": "Gramatica.json",
@@ -20,12 +18,10 @@ class GuideRAG:
         self.documents = []
 
         if categoria and categoria in file_map:
-            # carrega apenas o arquivo da categoria
             file_path = folder / file_map[categoria]
             if file_path.exists():
                 data = json.loads(file_path.read_text(encoding="utf-8"))
                 items = data.get("items", [])
-                # pega apenas os últimos max_items
                 last_items = items[-max_items:]
                 if last_items:
                     text = ""
@@ -38,7 +34,6 @@ class GuideRAG:
                             text += f"\n{str(item)}\n"
                     self.documents.append(Document(page_content=text))
         else:
-            # carrega todos os arquivos do usuário
             for file_path in folder.glob("*.json"):
                 data = json.loads(file_path.read_text(encoding="utf-8"))
                 items = data.get("items", [])
@@ -54,7 +49,6 @@ class GuideRAG:
                             text += f"\n{str(item)}\n"
                     self.documents.append(Document(page_content=text))
 
-        # se não tiver nada salvo → RAG desativado
         if not self.documents:
             self.vectorstore = None
             return
