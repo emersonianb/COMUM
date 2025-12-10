@@ -86,9 +86,7 @@ pip install -r requirements.txt
 - `pandas==2.1.1`
 - `tiktoken==0.4.0`
 
----
-
-## ▶️ Como Executar o Projeto
+---```
 
 ### 👨‍💻 Autor
 Desenvolvido por Emerson Sousa
