@@ -87,8 +87,7 @@ pip install -r requirements.txt
 - `tiktoken==0.4.0`
 
 ---
-
-## ▶️ Como Executar o Projeto
+```
 
 ### 👨‍💻 Autor
 Desenvolvido por Emerson Sousa
