@@ -1,147 +1,202 @@
-import streamlit as st
-from agent.core_2 import AgenticTutor
-from pathlib import Path
-from dotenv import load_dotenv
+import os
 import json
+import urllib.parse
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session
+from dotenv import load_dotenv
+
+from agent.core_2 import AgenticTutor
+from agent.content_agent import ContentAgent
+
 load_dotenv()
 
-st.set_page_config(page_title="Agentic AI Tutor", layout="centered")
-st.title("💬 Agentic AI Tutor")
+app = Flask(__name__)
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "comum_secret_key_123")
 
-# Inicializa o tutor
-if "tutor" not in st.session_state:
-    st.session_state.tutor = AgenticTutor()
+# ==========================================================
+# 🔑 INICIALIZAÇÃO DOS AGENTES E BANCO SQLITE
+# ==========================================================
+tutor = AgenticTutor()
+content_agent = ContentAgent(memory=tutor.memory)
 
-# Inicializa o dicionário de usuários
-if "users" not in st.session_state:
-    st.session_state.users = {}
 
-# 🔹 Identificação simples do usuário
-st.sidebar.header("Perfil do Aluno")
-user_id = st.sidebar.text_input("Seu nome ou e-mail:", key="user_id")
+# ==========================================================
+# 📍 ROTAS DE NAVEGAÇÃO (PÁGINAS)
+# ==========================================================
 
-if not user_id:
-    st.info("Por favor, insira seu nome ou e-mail para começar 👇")
-    st.stop()
+@app.route("/")
+def index():
+    """1. Landing Page institucional com a proposta do COMUM Agentic Tutor."""
+    return render_template("index2.html")
 
-# Inicializa dados do usuário se ainda não existir
-if user_id not in st.session_state.users:
-    profile = st.session_state.tutor.memory.get_user_profile(user_id)
-    st.session_state.users[user_id] = {
-        "profile": profile,
-        "history": []
-    }
 
-user_data = st.session_state.users[user_id]
-history = user_data["history"]
-profile = user_data["profile"]
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    """2. Tela de Login e criação automática do perfil no SQLite."""
+    if request.method == "POST":
+        role = request.form.get("role", "aluno")
+        user_name = request.form.get("username") or request.form.get("user_name", "Aluno")
 
-# 🔹 Se o perfil não existir, pede para configurar
-if not profile:
-    st.subheader("🧭 Configuração Inicial")
-    nivel = st.selectbox("Escolha seu nível de proficiência:",
-    ["A1 - Beginner", "A2 - Elementary", "B1 - Intermediate",
-     "B2 - Upper-Intermediate", "C1 - Advanced", "C2 - Proficient"])
-    modulo = st.selectbox("Qual o idioma estudado?", ["Inglês"])
+        session["user_id"] = user_name
+        session["user_name"] = user_name
+        session["user_role"] = role
 
-    if st.button("Começar! 🚀"):
-        st.session_state.tutor.memory.set_user_profile(user_id, nivel, modulo)
-        # Atualiza profile na sessão
-        st.session_state.users[user_id]["profile"] = st.session_state.tutor.memory.get_user_profile(user_id)
-        st.success("Perfil configurado! Pode começar a conversar 👇")
-        st.rerun()
+        tutor.memory.set_user_profile(user_name, level="A1", module="Vocabulary")
 
-    st.stop()  # Impede o resto do app de rodar até configurar
+        if role == "professor":
+            return redirect(url_for("teacher_dashboard"))
+        return redirect(url_for("select_cards"))
 
-# 🔹 Se já configurou, mostra o perfil na barra lateral
-st.sidebar.success(f"Nível: {profile['nivel']} | Idioma: {profile['modulo']}")
-st.sidebar.subheader("📚 Guias e Materiais")
-material_option = st.sidebar.selectbox("Escolha um guia:", ["Vocabulário", "Gramática", "Conversação"])
-# Mapeia a opção selecionada para os nomes de arquivo corretos
+    return render_template("login.html")
 
-file_map = {
-    "Vocabulário": "Vocabulario.json",
-    "Gramática": "Gramatica.json",
-    "Conversação": "Conversacao.json"
-}
 
-user_folder = Path(f"data/users/{user_id}")
-file_name = file_map.get(material_option)
-file_path = user_folder / file_name
+@app.route("/select-cards")
+def select_cards():
+    """3. Tela de seleção de aulas/cards consultando o SQLite."""
+    user_id = session.get("user_id")
+    if not user_id:
+        return redirect(url_for("login"))
 
-if file_path.exists():
-    with open(file_path, "r", encoding="utf-8") as f:
-        content = json.load(f)
-    st.sidebar.json(content)
-else:
-    st.sidebar.info("Nenhum material salvo nesta categoria ainda.")
+    teacher_id = "prof_01"
+    raw_classes = tutor.memory.list_classes(teacher_id=teacher_id) or []
+    classes = []
 
-# ------------------- ADICIONAR MATERIAIS -------------------
-import streamlit as st
-from agent.material_manager import MaterialManager
-from agent.rag import GuideRAG
+    for c in raw_classes:
+        class_id = c.stem if hasattr(c, 'stem') else str(c)
+        data = tutor.memory.get_class(class_id, teacher_id=teacher_id) or {}
+        classes.append({
+            "id": class_id,
+            "class_id": class_id,
+            "title": data.get("title", f"Aula {class_id}"),
+            "description": data.get("description", "Módulo focado no aprendizado prático."),
+            "code": data.get("code", "Módulo")
+        })
 
-mat = MaterialManager()
+    if not classes:
+        classes = [{
+            "id": "class_01",
+            "class_id": "class_01",
+            "title": "Aula 01 - Expressões & Vocabulário",
+            "description": "Pratique vocabulário básico e estruturas cotidianas em inglês.",
+            "code": "Módulo 1"
+        }]
 
-st.sidebar.subheader("📥 Adicionar material de estudo")
+    return render_template("select_cards.html", classes=classes)
 
-categoria = st.sidebar.selectbox("Categoria do material:", ["conversacao", "gramatica", "vocabulario"])
-texto_material = st.sidebar.text_area("Cole o conteúdo aqui:")
 
-if st.sidebar.button("Salvar material"):
-    if texto_material.strip():
-        file_path = mat.add_material(user_id, categoria, texto_material)
-        st.sidebar.success(f"Material salvo em: {file_path}")
+@app.route("/teacher/dashboard")
+def teacher_dashboard():
+    """4. Dashboard do Professor."""
+    return "<h1>Área do Professor</h1><p>Acompanhamento de progresso via SQLite ativo.</p>"
 
-        # Atualiza RAG do usuário
-        st.session_state.tutor.rag = GuideRAG(user_id)
-        st.sidebar.info("RAG atualizado com os novos materiais!")
-    else:
-        st.sidebar.error("Por favor, insira algum conteúdo para salvar.")
 
-# ------------------- TELA DE INTRODUÇÃO -------------------
-st.subheader("👋 Bem-vindo ao Agentic AI Tutor")
+@app.route("/brainstorm/<class_id>")
+def brainstorm_page(class_id):
+    """5. Tela da Nuvem de Palavras (Diagnóstico Inicial)."""
+    user_id = session.get("user_id")
+    if not user_id:
+        return redirect(url_for("login"))
 
-st.markdown("""
-O Agentic Tutor é um assistente de aprendizagem de inglês projetado para estudantes brasileiros,
-adaptando explicações, atividades e dificuldade ao seu nível e estado emocional.
+    roadmap = content_agent.build_brainstorm_roadmap(user_id=user_id, teacher_id="prof_01", class_id=class_id)
+    title = roadmap.get("title", f"Aula {class_id}")
+    topics = roadmap.get("topics", [])
 
-Aqui estão algumas frases que você pode usar para começar ou orientar sua aula:
-""")
+    return render_template("brainstorm.html", title=title, class_id=class_id, topics=topics)
 
-with st.expander("💬 Como começar a aula"):
-    st.markdown("""
-    - **Olá, quero começar minha aula de inglês**
-    - **Olá, quero começar estudando o vocabulário**
-    - **Quero começar com um módulo simples**
-    """)
 
-with st.expander("⚙️ Ajustar explicações e estilo de ensino"):
-    st.markdown("""
-    - **Não entendi, pode explicar de outro jeito?**
-    - **Pode dar mais exemplos?**
-    - **Quero uma atividade mais difícil**
-    """)
+@app.route("/chat/<class_id>")
+def chat_page(class_id):
+    """6. Tela do Messenger (Chat do Tutor Inteligente)."""
+    user_id = session.get("user_id")
+    if not user_id:
+        return redirect(url_for("login"))
 
-with st.expander("🎮 Mini Games e atividades rápidas"):
-    st.markdown("""
-    - **Quero um mini game**
-    - **Não estou gostando assim, podemos mudar?**
-    - **Vamos jogar adivinhar palavras**
-    - **Quero completar frases**
-    """)
+    topics_queue = session.get("topics_queue", [])
+    selected_topics = [t["name"] if isinstance(t, dict) else t for t in topics_queue]
 
-st.markdown("""
-Quando estiver pronto, basta digitar uma mensagem abaixo e o tutor iniciará sua aula!
-""")
+    return render_template(
+        "chat.html", 
+        class_id=class_id, 
+        topics_queue=topics_queue,
+        selected_topics=selected_topics
+    )
 
-# ------------------- CHAT -------------------
-user_input = st.text_input("You:", "")
 
-if st.button("Send") and user_input.strip():
-    response = st.session_state.tutor.respond(user_id, user_input)
-    history.append(("You", user_input))
-    history.append(("Tutor", response))
-    
-for role, msg in history:
-    st.write(f"**{role}:** {msg}")
+# ==========================================================
+# ⚙️ ENDPOINTS DA API (DIAGNÓSTICO E CHAT COM PERSISTÊNCIA)
+# ==========================================================
+
+@app.route("/api/diagnostico", methods=["POST"])
+def salvar_diagnostico():
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"success": False, "message": "Usuário não autenticado"}), 401
+
+    data = request.json or {}
+    class_id = data.get("class_id", "class_01")
+    duvidas = data.get("duvidas", [])
+    dominados = data.get("dominados", [])
+
+    for d in duvidas:
+        content_agent.record_diagnosis(user_id=user_id, class_id=class_id, topic=d, status="partial")
+    for dom in dominados:
+        content_agent.record_diagnosis(user_id=user_id, class_id=class_id, topic=dom, status="mastered")
+
+    topics_queue = [{"name": d, "status": "duvida"} for d in duvidas]
+
+    if not topics_queue:
+        selected_topics = data.get("selected_topics", [])
+        topics_queue = [{"name": st, "status": "revisao"} for st in selected_topics]
+
+    if not topics_queue:
+        return jsonify({"success": False, "message": "Nenhum tópico fornecido"}), 400
+
+    session["topics_queue"] = topics_queue
+
+    return jsonify({
+        "success": True,
+        "message": "Diagnóstico salvo com sucesso!",
+        "redirect": f"/chat/{class_id}"
+    })
+
+
+@app.route("/api/chat", methods=["POST"])
+def api_chat():
+    """Recebe as mensagens do aluno e processa via AgenticTutor repassando os tópicos da sessão."""
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"status": "error", "message": "Usuário não autenticado"}), 401
+
+    data = request.json or {}
+    user_message = data.get("message", "")
+    class_id = data.get("class_id", "class_01")  # <--- Pega o ID da aula
+
+    if not user_message:
+        return jsonify({"status": "error", "message": "Mensagem vazia"}), 400
+
+    try:
+        # Recupera as dúvidas da sessão
+        topics_queue = session.get("topics_queue", [])
+
+        # Passa class_id e topics_queue para o tutor
+        ai_response = tutor.respond(
+            user_id=user_id, 
+            message=user_message, 
+            class_id=class_id, 
+            topics_queue=topics_queue
+        )
+
+        return jsonify({
+            "status": "success",
+            "response": ai_response
+        })
+
+    except Exception as e:
+        print(f"🚨 ERRO NA RESPOSTA DO TUTOR: {e}")
+        return jsonify({
+            "status": "error",
+            "message": f"Erro interno: {str(e)}"
+        }), 500
+
+
+if __name__ == "__main__":
+    app.run(debug=True, port=5000, use_reloader=False)

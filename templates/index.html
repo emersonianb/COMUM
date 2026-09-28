@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COMUM - Plataforma de Aprendizagem Agentiva</title>
+    <style>
+        body {
+            background-color: #020122;
+            color: #ffffff;
+            font-family: 'Inter', system-ui, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            text-align: center;
+        }
+        .hero {
+            max-width: 800px;
+            padding: 40px 20px;
+        }
+        h1 { font-size: 3rem; color: #FC9E4F; margin-bottom: 15px; }
+        p.tagline { font-size: 1.25rem; color: #A0A0B0; line-height: 1.6; margin-bottom: 40px; }
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        .feature-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 12px;
+        }
+        .feature-card h3 { color: #F2C94C; margin-top: 0; }
+        .feature-card p { font-size: 0.9rem; color: #CCC; }
+        .btn-start {
+            background: #FC9E4F;
+            color: #020122;
+            padding: 16px 36px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: 0.3s;
+        }
+        .btn-start:hover { background: #F2C94C; transform: scale(1.05); }
+    </style>
+</head>
+<body>
+    <div class="hero">
+        <h1>COMUM Agentic Tutor</h1>
+        <p class="tagline">Uma plataforma inteligente que utiliza a metodologia de <strong>Scaffolding</strong> (andaimagem pedagógica) para guiar alunos no aprendizado ativo sem entregar respostas prontas.</p>
+        
+        <div class="features">
+            <div class="feature-card">
+                <h3>Nuvem Brainstorm</h3>
+                <p>Identifique e selecione visualmente suas dúvidas e lacunas de conhecimento.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Tutor Adaptativo</h3>
+                <p>Receba suporte personalizado com base nas suas necessidades específicas.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Painel Docente</h3>
+                <p>Professores acompanham os diagnósticos em tempo real.</p>
+            </div>
+        </div>
+
+        <a href="/login" class="btn-start">Acessar Plataforma ➔</a>
+    </div>
+</body>
+</html>

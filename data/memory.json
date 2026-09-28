@@ -951,6 +951,11 @@
         "timestamp": "2025-11-27T13:00:18.234826",
         "message": "knife",
         "emotion": "neutral"
+      },
+      {
+        "timestamp": "2026-08-07T15:12:37.061823",
+        "message": "Ola, quero aprender ingles",
+        "emotion": "positive"
       }
     ],
     "profile": {
@@ -959,14 +964,15 @@
       "created_at": "2025-11-22T16:33:55.547116"
     },
     "learning_state": {
-      "emocao_recente": "neutral",
-      "updated_at": "2025-11-27T13:00:18.245552",
+      "emocao_recente": "positive",
+      "updated_at": "2026-08-07T15:13:18.385091",
       "modulo_atual": 1,
       "nivel": "iniciante",
-      "ultimo_topico": "computer\nQual",
+      "ultimo_topico": "Ola, quero aprender ingles",
       "categoria_atual": "vocabulario",
       "mini_game_suggested": false,
-      "mini_game_active": true
+      "mini_game_active": true,
+      "ultima_pergunta": "Voc\u00ea parece estar animado para aprender ingl\u00eas! \ud83c\udf1e Vamos come\u00e7ar com algo novo. Voc\u00ea j\u00e1 aprendeu sobre lugares na cidade, como parque, supermercado, farm\u00e1cia e biblioteca. Agora, vamos falar sobre objetos. Voc\u00ea mencionou \"knife\", que em portugu\u00eas significa \"faca\". \n\nVamos aprender uma nova palavra: \nPalavra: Chair \nTradu\u00e7\u00e3o: Cadeira \nPron\u00fancia: t\u0283\u025br \n\nVoc\u00ea consegue pensar em uma situa\u00e7\u00e3o em que voc\u00ea usaria uma cadeira?"
     },
     "taught_words": [
       "park",
@@ -1343,5 +1349,14 @@
     "learning_state": {},
     "taught_words": [],
     "taught_topics": []
+  },
+  "ezechiel": {
+    "history": [],
+    "profile": {
+      "nivel": "A1 - Beginner",
+      "modulo": "Ingl\u00eas",
+      "created_at": "2026-06-03T15:31:53.899883"
+    },
+    "learning_state": {}
   }
 }

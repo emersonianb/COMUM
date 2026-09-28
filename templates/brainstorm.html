@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brainstorm Interativo — Agente Tutor</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/brainstorm.css') }}">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="brand-logo">comum</div>
+
+    <div class="app-container">
+        <!-- Cabeçalho Informativo -->
+        <header class="header">
+            <span class="badge-aula">Aula: {{ title }}</span>
+            <h1>Do que você ainda tem dúvida?</h1>
+            <p>Clique nos tópicos flutuantes que você <strong>NÃO lembra bem</strong> ou que quer praticar com o Tutor Inteligente!</p>
+        </header>
+
+        <!-- Área Central da Nuvem de Palavras -->
+        <main class="cloud-wrapper" id="cloudContainer">
+            <!-- As palavras serão geradas dinamicamente via JS -->
+        </main>
+
+        <!-- Rodapé de Ação -->
+        <footer class="footer">
+            <div class="counter">
+                <span id="selectedCount">0</span> de {{ topics|length }} tópicos selecionados
+            </div>
+            <button id="btnConfirm" class="btn-confirm" onclick="enviarSelecao()">
+                Confirmar Diagnóstico
+            </button>
+        </footer>
+    </div>
+
+    <!-- Passa os dados do Python (Flask) para o JavaScript -->
+    <script>
+    const TOPICOS_AULA = {{ topics | tojson }};
+    const CLASS_ID = "{{ class_id }}";
+</script>
+   <script src="{{ url_for('static', filename='js/brainstorm.js') }}"></script>
+</body>
+</html>

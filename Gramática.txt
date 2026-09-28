@@ -1,0 +1,16 @@
+Gramática
+
+- Guia 1
+
+"tema": "Frutas (Fruits)",
+"conteudo": "Exemplo 1: \"I eat an apple every day.\" / Aqui usamos o presente simples para hábitos.\n\nExemplo 2: \"I bought bananas yesterday.\" / Passado simples para ações concluídas no passado.\n\nExemplo 3: \"She is eating an orange now.\" / Presente contínuo para ações que estão acontecendo no momento.\n\nExemplo 4: \"If I had strawberries, I would make a cake.\" / Condicional para situações hipotéticas.\n\nExemplo 5: \"Have you ever tried grapes from Italy?\" / Presente perfeito para experiências de vida."
+
+- Guia 2
+
+"tema": "Cores (Colors)",
+"conteudo": "Exemplo 1: \"The car is red.\" / Uso do verbo 'to be' no presente simples.\n\nExemplo 2: \"The sky was blue yesterday.\" / Uso do passado do verbo 'to be'.\n\nExemplo 3: \"The flowers are blooming in yellow and orange.\" / Presente contínuo para descrever ações em andamento.\n\nExemplo 4: \"If I paint the wall green, it will look brighter.\" / Condicional para possibilidades futuras.\n\nExemplo 5: \"Have you seen a black cat today?\" / Presente perfeito para ação que aconteceu em algum momento até agora."
+
+- Guia 3
+
+"tema": "Animais (Animals)",
+"conteudo": "Exemplo 1: \"I have a dog and a cat.\" / Presente simples para posse.\n\nExemplo 2: \"The lion slept in the sun.\" / Passado simples para descrever ações passadas.\n\nExemplo 3: \"The elephant is walking slowly.\" / Presente contínuo para ação em progresso.\n\nExemplo 4: \"If I see a bird, I will take a photo.\" / Condicional para situações futuras possíveis.\n\nExemplo 5: \"Have you ever visited a zoo with lions and elephants?\" / Presente perfeito para experiências de vida."

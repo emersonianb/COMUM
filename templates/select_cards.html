@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Escolha sua Aula — comum</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/brainstorm.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div class="brand-logo">comum</div>
+
+    <div class="app-container" style="justify-content: center; gap: 30px;">
+        <header class="header">
+            <span class="badge-aula">Sua Jornada</span>
+            <h1>Escolha a aula de hoje</h1>
+            <p>Selecione um dos módulos abaixo para iniciar o diagnóstico e a aula interativa</p>
+        </header>
+
+        <!-- Grid de Cards de Aulas -->
+        <main class="classes-grid">
+            {% for class in classes %}
+            <div class="class-card">
+                <div class="card-tag">
+                    {{ class.code if class.code else ('Módulo ' ~ loop.index) }}
+                </div>
+                <h3>{{ class.title or class.name }}</h3>
+                <p>{{ class.description if class.description else 'Módulo focado no aprendizado prático e retenção de conteúdo.' }}</p>
+                <a href="/brainstorm/{{ class.id or class.class_id }}" class="btn-start">
+                    Iniciar Brainstorm
+                </a>
+            </div>
+            {% else %}
+            <p style="color: #a8a29e; text-align: center; grid-column: 1/-1;">
+                Nenhuma aula disponível no momento.
+            </p>
+            {% endfor %}
+        </main>
+    </div>
+
+</body>
+</html>

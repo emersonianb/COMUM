@@ -1,82 +1,40 @@
-from langchain_community.vectorstores import Chroma
 from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_core.documents import Document
-from pathlib import Path
-import json
+from agent.memory import MemoryManager
 
 class GuideRAG:
-    def __init__(self, user_id, categoria=None, max_items=5):
-        folder = Path(f"data/users/{user_id}")
-
-        file_map = {
-            "conversacao": "Conversacao.json",
-            "gramatica": "Gramatica.json",
-            "vocabulario": "Vocabulario.json"
-        }
-
-        self.documents = []
-
-        if categoria and categoria in file_map:
-            file_path = folder / file_map[categoria]
-            if file_path.exists():
-                data = json.loads(file_path.read_text(encoding="utf-8"))
-                items = data.get("items", [])
-                last_items = items[-max_items:]
-                if last_items:
-                    text = ""
-                    for item in last_items:
-                        if isinstance(item, dict):
-                            tema = item.get("tema", "Sem tema")
-                            conteudo = item.get("conteudo", "")
-                            text += f"\nTema: {tema}\n{conteudo}\n"
-                        else:
-                            text += f"\n{str(item)}\n"
-                    self.documents.append(Document(page_content=text))
-        else:
-            for file_path in folder.glob("*.json"):
-                data = json.loads(file_path.read_text(encoding="utf-8"))
-                items = data.get("items", [])
-                last_items = items[-max_items:]
-                if last_items:
-                    text = ""
-                    for item in last_items:
-                        if isinstance(item, dict):
-                            tema = item.get("tema", "Sem tema")
-                            conteudo = item.get("conteudo", "")
-                            text += f"\nTema: {tema}\n{conteudo}\n"
-                        else:
-                            text += f"\n{str(item)}\n"
-                    self.documents.append(Document(page_content=text))
-
-        if not self.documents:
-            self.vectorstore = None
-            return
-
-        splitter = RecursiveCharacterTextSplitter(
-            chunk_size=500,
-            chunk_overlap=50
-        )
-        chunks = splitter.split_documents(self.documents)
-
-        embeddings = HuggingFaceEmbeddings(
+    def __init__(self, user_id, categoria=None, max_items=5, memory_manager=None):
+        self.user_id = user_id
+        self.categoria = categoria.lower() if categoria else None
+        self.max_items = max_items
+        self.memory = memory_manager or MemoryManager()
+        
+        self.embeddings = HuggingFaceEmbeddings(
             model_name="sentence-transformers/all-MiniLM-L6-v2"
         )
 
-        self.vectorstore = Chroma.from_documents(chunks, embeddings)
-
     def query(self, question, k=3):
-        if not self.vectorstore:
+        # 1. Gera o vetor da pergunta feita pelo usuário
+        query_vector = self.embeddings.embed_query(question)
+
+        # 2. Executa a busca vetorial via RPC no Supabase
+        res = self.memory.supabase.rpc(
+            'match_materials',
+            {
+                'query_embedding': query_vector,
+                'match_threshold': 0.25,
+                'match_count': k or self.max_items,
+                'p_user_id': self.user_id,
+                'p_category': self.categoria
+            }
+        ).execute()
+
+        matches = res.data or []
+        if not matches:
             return ""
-        results = self.vectorstore.similarity_search(question, k=k)
+
+        # 3. Agrupa os trechos encontrados para o Prompt
         text = ""
-        for r in results:
-            content = r.page_content if hasattr(r, "page_content") else str(r)
-            try:
-                parsed = json.loads(content)
-                tema = parsed.get("tema", "Sem tema")
-                conteudo = parsed.get("conteudo", "")
-                text += f"\nTema: {tema}\n{conteudo}\n"
-            except:
-                text += f"\n{content}\n"
+        for m in matches:
+            text += f"\nTema: {m.get('topic')}\n{m.get('content')}\n"
+
         return text.strip()

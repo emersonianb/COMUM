@@ -1,11 +1,15 @@
+import json
+import os
+from datetime import datetime
+from pathlib import Path
+import fitz  # PyMuPDF
 from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage
-import json, os
-from pathlib import Path
+from langchain_community.embeddings import HuggingFaceEmbeddings
 
 
 class MaterialFormatter:
-    def __init__(self, model="llama-3.1-8b-instant"):
+    def __init__(self, model="openai/gpt-oss-120b"):
         self.llm = ChatGroq(
             model=model,
             temperature=0.0,
@@ -33,46 +37,85 @@ class MaterialFormatter:
 
         try:
             return json.loads(content)
-        except:
+        except Exception:
             start = content.find("{")
             end = content.rfind("}") + 1
             return json.loads(content[start:end])
 
+
 class MaterialManager:
-    def __init__(self, base_folder="data/users", formatter=None):
-        self.base_folder = Path(base_folder)
-        self.formatter = formatter  # << adicionar
+    def __init__(self, memory_manager, formatter=None):
+        self.memory_manager = memory_manager
+        self.formatter = formatter
+        # Modelo para geração dos vetores para o Supabase (pgvector)
+        self.embeddings = HuggingFaceEmbeddings(
+            model_name="sentence-transformers/all-MiniLM-L6-v2"
+        )
 
-    def get_user_folder(self, user_id):
-        user_path = self.base_folder / str(user_id)
-        user_path.mkdir(parents=True, exist_ok=True)
+    def _extract_text_from_file(self, file_path):
+        """Lê e extrai o texto de arquivos .pdf, .txt ou .md."""
+        path = Path(file_path)
+        if not path.exists():
+            raise FileNotFoundError(f"Arquivo não encontrado: {path}")
 
-        for file in ["Conversacao.json", "Gramatica.json", "Vocabulario.json"]:
-            path = user_path / file
-            if not path.exists():
-                path.write_text(json.dumps({"items": []}, indent=2), encoding="utf-8")
+        ext = path.suffix.lower()
 
-        return user_path
+        if ext == ".pdf":
+            text = ""
+            with fitz.open(path) as doc:
+                for page in doc:
+                    text += page.get_text()
+            return text
+        elif ext in [".txt", ".md"]:
+            return path.read_text(encoding="utf-8")
+        else:
+            raise ValueError(f"Formato '{ext}' não suportado. Use .pdf, .txt ou .md.")
 
     def add_material(self, user_id, category, raw_text):
-        folder = self.get_user_folder(user_id)
+        """Formata o texto bruto, gera o embedding vetorial e salva no Supabase."""
+        category_clean = category.lower()
+        self.memory_manager._ensure_user(user_id)
 
-        file_map = {
-            "conversacao": "Conversacao.json",
-            "gramatica": "Gramatica.json",
-            "vocabulario": "Vocabulario.json"
-        }
-
-        file_path = folder / file_map[category]
-        data = json.loads(file_path.read_text(encoding="utf-8"))
-
-        # FORMATADOR ENTRA AQUI 🔥
         if self.formatter:
             structured = self.formatter.format(raw_text)
         else:
             structured = {"tema": "Indefinido", "conteudo": raw_text}
 
-        data["items"].append(structured)
+        topic = structured.get("tema", "Indefinido")
+        content = structured.get("conteudo", raw_text)
 
-        file_path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
-        return file_path
+        # Gera o vetor vetorial para permitir busca por RAG
+        vector = self.embeddings.embed_query(content)
+
+        res = self.memory_manager.supabase.table("user_materials").insert({
+            "user_id": user_id,
+            "category": category_clean,
+            "topic": topic,
+            "content": content,
+            "embedding": vector
+        }).execute()
+
+        material_id = res.data[0]["id"] if res.data else None
+
+        return {
+            "id": material_id,
+            "category": category_clean,
+            "topic": topic,
+            "status": "salvo_no_banco"
+        }
+
+    def add_material_from_file(self, user_id, category, file_path):
+        """Extrai o texto de um PDF/TXT no disco, formata via LLM e salva no banco."""
+        raw_text = self._extract_text_from_file(file_path)
+        return self.add_material(user_id, category, raw_text)
+
+    def get_materials_by_category(self, user_id, category):
+        """Recupera os materiais cadastrados de uma categoria específica para o usuário."""
+        res = (
+            self.memory_manager.supabase.table("user_materials")
+            .select("id, topic, content, created_at")
+            .eq("user_id", user_id)
+            .eq("category", category.lower())
+            .execute()
+        )
+        return res.data or []

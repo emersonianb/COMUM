@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>comum - O aprendizado da língua ao alcance de todos</title>
+    
+    <!-- Fontes e Estilos -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
+
+    <style>
+        /* Ajustes de transparência para destacar o mapa de fundo */
+        .hero-section {
+            position: relative;
+            width: 100%;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            background-color: #0d1117;
+        }
+
+        #world-map-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+            background: transparent !important;
+            box-shadow: none !important;
+            border: none !important;
+            backdrop-filter: none !important;
+            pointer-events: none;
+        }
+
+        .hero-content * {
+            pointer-events: auto;
+        }
+
+        /* Título Interativo Animado */
+        .hero-content h1 {
+            font-size: 5rem;
+            font-weight: 800;
+            letter-spacing: -2px;
+            background: linear-gradient(135deg, #FC9E4F, #EDD382, #FC9E4F);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 30px rgba(252, 158, 79, 0.3);
+            transition: transform 0.3s ease, filter 0.3s ease;
+            cursor: pointer;
+            user-select: none;
+            animation: shine 4s linear infinite;
+            margin-bottom: 10px;
+        }
+
+        .hero-content h1:hover {
+            transform: scale(1.05) translateY(-4px);
+            filter: drop-shadow(0 0 25px rgba(252, 158, 79, 0.7));
+        }
+
+        @keyframes shine {
+            to { background-position: 200% center; }
+        }
+
+        .hero-content p {
+            color: #c9d1d9;
+            font-size: 1.25rem;
+            margin-bottom: 25px;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+        }
+    </style>
+</head>
+<body>
+
+    <a href="{{ url_for('index') }}" class="brand-logo">comum</a>
+
+    <!-- Hero Section com Canvas do Mapa-Múndi -->
+    <section class="hero-section">
+        <canvas id="world-map-canvas"></canvas>
+        
+        <div class="hero-content">
+            <h1>comum</h1>
+            <p>Tornando o aprendizado da língua comum a todos.</p>
+            <div class="cta-group">
+                <a href="{{ url_for('login') }}" class="btn-primary">Começar Agora</a>
+                <a href="#sobre" class="btn-secondary">Conhecer o Projeto</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Seção Sobre a Plataforma -->
+    <section id="sobre" class="section-container">
+        <div class="section-title">
+            <h2>Sobre a Plataforma</h2>
+            <p>Conectando culturas através do aprendizado acessível</p>
+        </div>
+        
+        <div class="features-grid">
+            <div class="feature-card">
+                <h3>Acessibilidade Universal</h3>
+                <p>Desenvolvido para remover as barreiras do aprendizado de idiomas, tornando o ensino prático e dinâmico para qualquer pessoa.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Método Interativo</h3>
+                <p>Atividades baseadas em dinâmicas visuais e interações diretas para fixação natural do vocabulário.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Comunidade Global</h3>
+                <p>Uma rede focada na troca cultural e no fortalecimento do aprendizado prático em grupo.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Seção Começar -->
+    <section id="comecar" class="section-container" style="text-align: center;">
+        <div class="section-title">
+            <h2>Pronto para começar?</h2>
+            <p>Escolha sua jornada e comece a praticar hoje mesmo.</p>
+        </div>
+        <a href="{{ url_for('login') }}" class="btn-primary" style="display: inline-block;">Acessar Módulos</a>
+    </section>
+
+    <!-- Script de Animação em JS -->
+    <script src="{{ url_for('static', filename='js/index.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,255 @@
+:root {
+    --cream: #F2F3AE;
+    --gold: #EDD382;
+    --orange: #FC9E4F;
+    --red: #F4442E;
+    --dark-navy: #020122;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+}
+
+body {
+    background: var(--dark-navy);
+    /* Fundo iluminado no centro com os tons quentes da paleta */
+    background-image: radial-gradient(circle at 50% 30%, rgba(252, 158, 79, 0.12) 0%, rgba(2, 1, 34, 1) 70%);
+    color: var(--cream);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow-x: hidden;
+}
+
+/* Brand Name no Canto Superior Esquerdo */
+.brand-logo {
+    position: absolute;
+    top: 24px;
+    left: 32px;
+    font-size: 1.6rem;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, var(--red), var(--orange));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-transform: lowercase;
+    z-index: 20;
+}
+
+.brand-logo::after {
+    content: '.';
+    color: var(--orange);
+    -webkit-text-fill-color: var(--orange);
+}
+
+.app-container {
+    width: 100%;
+    max-width: 1000px;
+    height: 90vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    position: relative;
+}
+
+/* Header */
+.header {
+    text-align: center;
+    z-index: 10;
+}
+
+.badge-aula {
+    background: rgba(237, 211, 130, 0.15);
+    color: var(--gold);
+    border: 1px solid rgba(237, 211, 130, 0.35);
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.header h1 {
+    font-size: 2rem;
+    margin-top: 12px;
+    background: linear-gradient(135deg, var(--cream) 40%, var(--gold));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.header p {
+    color: var(--gold);
+    opacity: 0.85;
+    font-size: 0.95rem;
+    margin-top: 6px;
+}
+
+/* Área da Nuvem (Floating Area) com fundo mais quente e iluminado */
+.cloud-wrapper {
+    width: 100%;
+    flex: 1;
+    position: relative;
+    margin: 20px 0;
+    border-radius: 24px;
+    background: radial-gradient(circle at center, rgba(252, 158, 79, 0.15) 0%, rgba(2, 1, 34, 0.85) 100%);
+    border: 1px solid rgba(237, 211, 130, 0.25);
+    box-shadow: inset 0 0 40px rgba(252, 158, 79, 0.05);
+}
+
+/* Botões/Tags Flutuantes */
+.word-tag {
+    position: absolute;
+    padding: 12px 24px;
+    background: rgba(2, 1, 34, 0.85);
+    border: 1px solid rgba(237, 211, 130, 0.3);
+    color: var(--cream);
+    border-radius: 50px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+    backdrop-filter: blur(8px);
+    transition: transform 0.2s ease, background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    white-space: nowrap;
+}
+
+.word-tag:hover {
+    border-color: var(--orange);
+    color: #ffffff;
+    z-index: 100 !important;
+    box-shadow: 0 0 20px rgba(252, 158, 79, 0.4);
+}
+
+/* Estado Selecionado (Transição marcante com tom Vermelho -> Laranja) */
+.word-tag.selected {
+    background: linear-gradient(135deg, var(--red), var(--orange));
+    border-color: var(--cream);
+    color: #ffffff;
+    box-shadow: 0 0 25px rgba(244, 68, 46, 0.6);
+}
+
+/* Footer */
+.footer {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    z-index: 10;
+}
+
+.counter {
+    font-size: 0.95rem;
+    color: var(--cream);
+    background: rgba(2, 1, 34, 0.7);
+    padding: 10px 20px;
+    border-radius: 12px;
+    border: 1px solid rgba(237, 211, 130, 0.2);
+}
+
+.counter span {
+    color: var(--orange);
+    font-weight: 700;
+}
+
+.btn-confirm {
+    background: linear-gradient(135deg, var(--red), var(--orange));
+    color: #ffffff;
+    border: none;
+    padding: 12px 28px;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 15px rgba(244, 68, 46, 0.4);
+}
+
+.btn-confirm:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(252, 158, 79, 0.6);
+}
+
+/* --- Grid e Cards da Seleção de Aulas --- */
+.classes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 24px;
+    width: 100%;
+    max-width: 900px;
+    margin-top: 10px;
+}
+
+.class-card {
+    background: rgba(2, 1, 34, 0.75);
+    border: 1px solid rgba(237, 211, 130, 0.25);
+    border-radius: 20px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(8px);
+}
+
+.class-card:hover {
+    transform: translateY(-5px);
+    border-color: var(--orange);
+    box-shadow: 0 8px 30px rgba(252, 158, 79, 0.25);
+}
+
+.card-tag {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--gold);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
+
+.class-card h3 {
+    font-size: 1.25rem;
+    color: var(--cream);
+    margin-bottom: 8px;
+}
+
+.class-card p {
+    font-size: 0.88rem;
+    color: var(--gold);
+    opacity: 0.8;
+    line-height: 1.5;
+    margin-bottom: 20px;
+}
+
+.btn-start {
+    display: inline-block;
+    text-align: center;
+    background: linear-gradient(135deg, var(--red), var(--orange));
+    color: white;
+    text-decoration: none;
+    padding: 10px 18px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(244, 68, 46, 0.3);
+}
+
+.btn-start:hover {
+    box-shadow: 0 6px 18px rgba(252, 158, 79, 0.5);
+    transform: scale(1.02);
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .brand-logo { top: 16px; left: 20px; font-size: 1.25rem; }
+    .header h1 { font-size: 1.5rem; }
+    .word-tag { font-size: 0.85rem; padding: 8px 16px; }
+    .footer { flex-direction: column; gap: 10px; }
+}

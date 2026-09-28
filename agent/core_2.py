@@ -1,30 +1,22 @@
-# agent/core.py
-from .emotions import EmotionAnalyser
+# agent/core_2.py
 from .llm_handler import LLMHandler
 from .memory import MemoryManager
-from .rag import GuideRAG
 from .material_manager import MaterialManager, MaterialFormatter
-import re
-import json
-from pathlib import Path
+from .rag import GuideRAG
 
 class AgenticTutor:
     def __init__(self):
-        self.emotions = EmotionAnalyser()
         self.memory = MemoryManager()
         self.llm = LLMHandler()
+        self.material_manager = MaterialManager(
+            memory_manager=self.memory, 
+            formatter=MaterialFormatter()
+        )
         self.rag = None
-        self.user_welcomed = {}
 
     def interpret_student_message(self, last_question, user_message):
-        """
-        Mini-agente que interpreta a mensagem do aluno e indica
-        ao agente principal o que ele deve responder:
-        - Continuar o tópico atual (comentar resposta)
-        - Introduzir novo tópico
-        """
         if not last_question:
-            return "new_topic", None
+            return "NOVO_TOPICO", None
 
         prompt = f"""
         Você é um mini-agente tutor. Analise a mensagem do aluno e indique ao tutor principal o que fazer.
@@ -45,10 +37,9 @@ class AgenticTutor:
         result, _ = self.llm.generate(
             context="",
             message=prompt,
-            emotion="neutral",
             materials_context="",
-            nivel="A1",
-            modulo_atual="default",
+            level="A1",
+            current_module="default",
             last_topic="none",
             previous_words=[],
             previous_topics=[],
@@ -63,133 +54,116 @@ class AgenticTutor:
 
     def continue_mini_game(self, user_id):
         learning_state = self.memory.get_learning_state(user_id)
-        categoria = learning_state.get("categoria_atual", "vocabulario")
-        last_topic = learning_state.get("ultimo_topico", None)
+        current_category = learning_state.get("current_category", "vocabulario")
 
-        guides_path = Path("data/guides.json")
-        guides = json.loads(guides_path.read_text()) if guides_path.exists() else {}
-        category_guide = guides.get(categoria, [])
+        class_info = self.memory.get_class("class_01")
+        category_topics = class_info.get("topics", []) if class_info else []
 
         previous_topics = self.memory.get_taught_topics(user_id)
-        remaining_topics = [t for t in category_guide if t not in previous_topics]
-        next_topic = remaining_topics[0] if remaining_topics else category_guide[0] if category_guide else "no available topic"
+        remaining_topics = [t for t in category_topics if t not in previous_topics]
+        next_topic = remaining_topics[0] if remaining_topics else (category_topics[0] if category_topics else "General Practice")
 
-        self.memory.update_learning_state(user_id, mini_game_active=True, ultimo_topico=next_topic)
-        return f"🎲 Let's start the mini-game on {categoria}! First activity is based on the topic '{next_topic}'."
+        self.memory.update_learning_state(user_id, last_topic=next_topic)
+        return f"🎲 Let's start the mini-game on {current_category}! First activity is based on the topic '{next_topic}'."
 
-    def respond(self, user_id, message):
+    def respond(self, user_id, message, class_id="class_01", topics_queue=None):
         profile = self.memory.get_user_profile(user_id)
-        if not profile or "nivel" not in profile or "modulo" not in profile:
+        if not profile or "level" not in profile or "module" not in profile:
             return "Before we start, I need to know your level and module. 🙂"
 
-        # 1. Emotion analysis
-        emotion = self.emotions.analyse(message)
-        self.memory.update_history(user_id, message, emotion)
-        self.memory.update_learning_state(user_id, emocao_recente=emotion)
+        # 1. Salva mensagem no histórico do SQLite
+        self.memory.update_history(user_id, f"Aluno: {message}")
 
-        # 1b. Detect category
-        categoria_atual = None
+        # 2. Identifica os conceitos e dúvidas marcados no Brainstorm
+        duvidas = []
+        if topics_queue:
+            duvidas = [t["name"] if isinstance(t, dict) else t for t in topics_queue]
+
+        # Se não vier via sessão, busca direto na tabela do banco
+        if not duvidas and hasattr(self.memory, "get_user_diagnostics"):
+            diag = self.memory.get_user_diagnostics(user_id, class_id) or []
+            duvidas = [item["topic"] for item in diag if item.get("status") in ("partial", "duvida")]
+
+        topicos_foco = ", ".join(duvidas) if duvidas else "Prática Geral"
+
+        # 3. Categorização simples de mensagens
         msg_lower = message.lower()
+        current_category = None
         if "vocabulario" in msg_lower or "vocabulário" in msg_lower:
-            categoria_atual = "vocabulario"
-        elif "gramatica" in msg_lower:
-            categoria_atual = "gramatica"
+            current_category = "vocabulario"
+        elif "gramatica" in msg_lower or "gramática" in msg_lower:
+            current_category = "gramatica"
         elif "conversacao" in msg_lower or "conversação" in msg_lower:
-            categoria_atual = "conversacao"
-        if categoria_atual:
-            self.memory.update_learning_state(user_id, categoria_atual=categoria_atual)
+            current_category = "conversacao"
 
-        # 2. Current user state
+        if current_category:
+            self.memory.update_learning_state(user_id, current_category=current_category)
+
+        # 4. Lê estado e contexto do SQLite
         context = self.memory.get_context(user_id)
         learning_state = self.memory.get_learning_state(user_id)
-        last_topic = learning_state.get("ultimo_topico", None)
-        modulo_atual = learning_state.get("modulo_atual", profile["modulo"])
-        nivel = learning_state.get("nivel", profile["nivel"])
-
-        if "modulo_atual" not in learning_state:
-            self.memory.update_learning_state(user_id, modulo_atual=modulo_atual)
-        if "nivel" not in learning_state:
-            self.memory.update_learning_state(user_id, nivel=nivel)
+        
+        level = learning_state.get("level") or profile.get("level", "A1")
+        current_module = learning_state.get("current_module") or profile.get("module", "Vocabulary")
+        last_topic = learning_state.get("last_topic", "none")
 
         previous_words = [w.lower() for w in (self.memory.get_taught_words(user_id) or [])]
         previous_topics = [t.lower() for t in (self.memory.get_taught_topics(user_id) or [])]
 
-        ultima_pergunta = learning_state.get("ultima_pergunta", None)
+        # 5. Avalia intenção via mini-agente
+        last_question = learning_state.get("last_topic")
         action, instruction = self.interpret_student_message(
-            last_question=ultima_pergunta,
+            last_question=last_question,
             user_message=message
         )
 
-        if action == "CONTINUAR":
-            manter_topico = True
-        else:
-            manter_topico = False
-            self.memory.update_learning_state(user_id, ultimo_topico=message)
+        if action != "CONTINUAR":
+            self.memory.update_learning_state(user_id, last_topic=message)
 
-        # 3. Mini-game trigger
-        game_in_progress = learning_state.get("mini_game_active", False)
-        wants_alternative = any(x in msg_lower for x in ["outra forma", "mudar", "de outra forma", "diferente"])
-        if (emotion == "negative" or wants_alternative) and not game_in_progress:
-            self.memory.update_learning_state(user_id, mini_game_active=True)
-            self.rag = GuideRAG(user_id, categoria=categoria_atual)
-            rag_context = self.rag.query(message) if self.rag else ""
+        # 6. Monta os materiais de contexto com FOCO OBRIGATÓRIO nos conceitos do Andaime
+        materials_str = f"🎯 FOCO OBRIGATÓRIO DA AULA (CONCEITOS SELECIONADOS PELO ALUNO): {topicos_foco}\n"
+        materials_str += f"O tutor DEVE focar seus exercícios e explicações EXCLUSIVAMENTE nestes tópicos: {topicos_foco}.\n"
 
-            response_text, new_word = self.llm.generate(
-                context=context,
-                message=instruction or message,
-                emotion=emotion,
-                materials_context=rag_context,
-                nivel=nivel,
-                modulo_atual=modulo_atual,
-                last_topic=last_topic if last_topic else "none",
-                previous_words=previous_words,
-                previous_topics=previous_topics,
-                has_previous_sessions=False
-            )
+        if current_category:
+            self.rag = GuideRAG(user_id=user_id, categoria=current_category, memory_manager=self.memory)
+            rag_output = self.rag.query(message)
+            if rag_output:
+                materials_str += f"\nConteúdo RAG: {rag_output}"
+            else:
+                extra_materials = self.material_manager.get_materials_by_category(user_id, current_category)
+                materials_str += "\n" + "\n".join([f"- [{m['topic']}]: {m['content']}" for m in extra_materials])
 
-            self.memory.update_learning_state(user_id, ultima_pergunta=response_text)
-
-            if new_word:
-                self.memory.add_taught_word(user_id, new_word)
-                self.memory.add_taught_topic(user_id, new_word)
-                self.memory.update_learning_state(user_id, ultimo_topico=new_word)
-
-            return response_text
-
-        # 4. RAG / materials
-        self.rag = GuideRAG(user_id, categoria=categoria_atual)
-        rag_context = self.rag.query(message) if self.rag else ""
-
-        # 5. Generate response usando a instrução do mini-agente
-        response, new_word = self.llm.generate(
+        # 7. Gera resposta com a LLM
+        response_text, new_word = self.llm.generate(
             context=context,
             message=instruction or message,
-            emotion=emotion,
-            materials_context=rag_context,
-            nivel=nivel,
-            modulo_atual=modulo_atual,
-            last_topic=last_topic if last_topic else "none",
+            materials_context=materials_str,
+            level=level,
+            current_module=current_module,
+            last_topic=last_topic,
             previous_words=previous_words,
             previous_topics=previous_topics,
-            has_previous_sessions=False
+            has_previous_sessions=len(context) > 1
         )
 
-        self.memory.update_learning_state(user_id, ultima_pergunta=response)
+        # 8. Atualiza histórico no SQLite
+        self.memory.update_history(user_id, f"Tutor: {response_text}")
 
         if new_word:
             if new_word.lower() not in previous_words:
                 self.memory.add_taught_word(user_id, new_word)
             if new_word.lower() not in previous_topics:
                 self.memory.add_taught_topic(user_id, new_word)
-            self.memory.update_learning_state(user_id, ultimo_topico=new_word.lower())
+            self.memory.update_learning_state(user_id, last_topic=new_word.lower())
 
-        # 6. Save material
-        try:
-            formatter = MaterialFormatter()
-            mat = MaterialManager(formatter=formatter)
-            if categoria_atual:
-                mat.add_material(user_id=user_id, category=categoria_atual, raw_text=response)
-        except Exception as e:
-            print("Error saving material automatically:", e)
+        if current_category:
+            try:
+                self.material_manager.add_material(
+                    user_id=user_id, 
+                    category=current_category, 
+                    raw_text=response_text
+                )
+            except Exception as e:
+                print("Erro ao salvar material no SQLite:", e)
 
-        return response
+        return response_text

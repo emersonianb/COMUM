@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COMUM - Tutor com Scaffolding</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/brainstorm.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+    <div class="chat-layout">
+        <!-- ÁREA PRINCIPAL DO MESSENGER -->
+        <main class="chat-container">
+            <header class="chat-header">
+                <div class="tutor-info">
+                    <div class="avatar-tutor"></div>
+                    <div>
+                        <h2>Tutor COMUM</h2>
+                        <span class="status-online">● Online • Scaffolding Groq Ativo</span>
+                    </div>
+                </div>
+                <button id="toggle-sidebar-btn" class="btn-games-toggle">Flashcards & Jogos</button>
+            </header>
+
+            <!-- Tópicos selecionados em destaque -->
+            {% if selected_topics %}
+            <div class="topics-bar">
+                <span>Foco do Andaime:</span>
+                {% for topic in selected_topics %}
+                    <span class="topic-chip">{{ topic }}</span>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <div class="chat-messages" id="chat-messages">
+                <!-- Mensagem de Boas-Vindas do Tutor -->
+                <div class="message-wrapper tutor">
+                    <div class="message-bubble">
+                        Olá! Vi que você selecionou os tópicos para praticar. Como posso te ajudar com o primeiro conceito?
+                    </div>
+                </div>
+            </div>
+
+            <!-- Indicador Digitando (3 Pontinhos) -->
+            <div class="typing-indicator-wrapper hidden" id="typing-indicator">
+                <div class="typing-bubble">
+                    <span class="dot"></span>
+                    <span class="dot"></span>
+                    <span class="dot"></span>
+                </div>
+            </div>
+
+            <footer class="chat-footer">
+                <form id="chat-form" class="chat-input-box">
+                    <input type="text" id="user-input" placeholder="Digite sua dúvida ou resposta..." autocomplete="off" required>
+                    <button type="submit" class="btn-send">Enviar ➔</button>
+                </form>
+            </footer>
+        </main>
+
+        <!-- PAINEL LATERAL: RECURSOS EDUCATIVOS -->
+        <aside class="side-panel hidden" id="side-panel">
+            <div class="panel-header">
+                <h3>Recursos Educativos</h3>
+                <button id="close-panel-btn" class="btn-close">&times;</button>
+            </div>
+            <div class="panel-tabs">
+                <button class="tab-btn active" data-tab="flashcards">Flashcards</button>
+                <button class="tab-btn" data-tab="games">Mini-Games</button>
+            </div>
+            
+            <div class="panel-content">
+                <!-- Conteúdo dos Flashcards -->
+                <div id="tab-flashcards" class="tab-content active">
+                    <div class="flashcard-card" id="flashcard">
+                        <div class="flashcard-inner" id="card-inner">
+                            <div class="flashcard-front">
+                                <p id="card-front">Clique para revelar</p>
+                            </div>
+                            <div class="flashcard-back">
+                                <p id="card-back">Resposta / Tradução</p>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="btn-next-card" id="btn-next-card">Próximo Card ➔</button>
+                </div>
+
+                <!-- Conteúdo dos Mini-Games -->
+                <div id="tab-games" class="tab-content hidden">
+                    <div class="game-box">
+                        <h4>Quiz do Conhecimento</h4>
+                        <p>Acesse o desafio interativo sobre os tópicos da aula.</p>
+                        <button class="btn-game-start">Iniciar Desafio</button>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <script>
+    const CLASS_ID = "{{ class_id }}";
+    // Usa default([]) para evitar erro caso a variável venha vazia
+    const TOPICS_QUEUE = {{ (topics_queue or []) | tojson }};
+    const SELECTED_TOPICS = {{ (selected_topics or []) | tojson }};
+</script>
+    <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
+</body>
+</html>

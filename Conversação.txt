@@ -1,0 +1,22 @@
+Conversação
+
+- Guia 1:
+
+"tema":"Frutas (Fruits)"
+"conteudo": "Exemplo 1: "What fruit do you like the most?" "I love apples and bananas."
+"Exemplo 2: \"Can you buy some oranges for breakfast?\" "Sure, how many do you need?"
+"Exemplo 3: \"Do you prefer strawberries or grapes?\" "I prefer strawberries because they are sweeter.
+
+- Guia 2
+
+"tema": "Cores (Colors)",
+"conteudo": "Exemplo 1: "What is your favorite color?\" "I really like blue and green."
+"Exemplo 2: "Can you paint the wall red?\" "Yes, I can, it will look bright and warm."
+"Exemplo 3: "Do you prefer black or yellow clothes?""I prefer black because it matches everything."
+
+- Guia 3
+
+"tema": "Animais (Animals)",
+"conteudo": "Exemplo 1: \"Do you have any pets?\" "Yes, I have a dog and a cat."
+"Exemplo 2: "Have you ever seen an elephant at the zoo?" "Yes, they are huge and amazing!"
+"Exemplo 3: "Which animal is the king of the jungle?" "The lion is the king of the jungle."

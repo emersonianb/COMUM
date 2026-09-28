@@ -1,0 +1,49 @@
+{
+  "teacher_id": "prof_01",
+  "classes": [
+  {"class_id": "class_01",
+  "title": "Present Simple - daily routine",
+  "category": "gramatica",
+  "raw_content": "Present Simple é usado para falar sobre rotinas, hábitos e fatos gerais. Estrutura: sujeito + verbo (adiciona -s/-es na 3ª pessoa). Ex: I wake up at 7am. She works at a hospital. Advérbios de frequência (always, usually, often, sometimes, never) geralmente vêm antes do verbo principal.",
+  "topics": [
+    "present simple - affirmative",
+    "present simple - 3rd person (-s/-es)",
+    "frequency adverbs",
+    "daily routine vocabulary"
+  ],
+  "created_at": "2025-01-10"},
+  {
+      "class_id": "class_02",
+      "title": "Past Simple & Regular Verbs",
+      "raw_content": "Conteúdo da aula 2...",
+      "topics": [
+        "past simple - affirmative",
+        "regular verbs (-ed)"
+      ]
+    },
+    {
+      "class_id": "class_03",
+      "title": "Past Simple - Experiences & Memories",
+      "category": "gramatica",
+      "raw_content": "Past Simple é usado para falar sobre ações, acontecimentos e experiências que aconteceram e terminaram no passado. A estrutura afirmativa geralmente utiliza sujeito + verbo no passado. Verbos regulares recebem -ed, enquanto verbos irregulares possuem formas próprias, como go → went e see → saw. Na forma negativa, usamos did not (didn't) + verbo na forma base. Para perguntas, usamos did + sujeito + verbo na forma base. Expressões como yesterday, last week, last year, ago e in 2020 são frequentemente utilizadas para indicar quando algo aconteceu.",
+      "topics": [
+      "past simple - affirmative",
+      "past simple - negative",
+      "past simple - questions",
+      "regular verbs (-ed)",
+      "irregular verbs",
+      "verb to be - was/were",
+      "did and didn't",
+      "base form of the verb",
+      "past time expressions",
+      "yesterday",
+      "last week / last month / last year",
+      "ago",
+      "telling past events",
+      "talking about memories",
+      "past experiences"
+      ],
+      "created_at": "2025-01-15"
+      }
+  ]
+}
