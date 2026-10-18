@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ turma.name }} - COMUM</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/teacher.css') }}">
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div class="sidebar-brand">COMUM</div>
+        <ul class="sidebar-menu">
+            <li><a href="{{ url_for('teacher_dashboard') }}">⬅ Voltar para Salas</a></li>
+        </ul>
+    </aside>
+
+    <main class="main-content">
+        <!-- Exibe avisos de erro ou sucesso na tela -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div style="padding: 14px; margin-bottom: 24px; border-radius: 10px; background: rgba(255, 107, 107, 0.15); color: #ff6b6b; border: 1px solid rgba(255, 107, 107, 0.3); font-weight: 500;">
+                        ⚠️ {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        <div class="top-bar">
+            <div class="page-title">
+                <h1>{{ turma.name }}</h1>
+                <p>Código da Sala: <strong style="color: var(--primary); font-size: 1.1rem;">{{ turma.code }}</strong> 
+                   <button onclick="navigator.clipboard.writeText('{{ turma.code }}'); alert('Código copiado!');" style="background:none; border:none; cursor:pointer; font-size:1rem;">📋</button>
+                </p>
+            </div>
+            <button class="btn-primary" onclick="openModal('modal-content')">+ Adicionar Aula/Conteúdo</button>
+        </div>
+
+        <!-- Progresso dos Alunos -->
+        <div class="section-header">
+            <h2>Alunos Inscritos ({{ students|length }})</h2>
+        </div>
+
+        <div class="table-container" style="margin-bottom: 40px;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Aluno</th>
+                        <th>Nível</th>
+                        <th>Módulo Atual</th>
+                        <th>Tópicos Estudados</th>
+                        <th>Tópicos Dominados</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for st in students %}
+                    <tr>
+                        <td><strong>@{{ st.student_id }}</strong></td>
+                        <td><span class="turma-code-badge">{{ st.level }}</span></td>
+                        <td>{{ st.current_module }}</td>
+                        <td>{{ st.topics_count }}</td>
+                        <td style="color: #4cd137; font-weight: bold;">{{ st.mastered_count }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" style="text-align: center; color: var(--text-muted);">Nenhum aluno entrou nesta sala ainda. Compartilhe o código <strong>{{ turma.code }}</strong> com seus alunos.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Conteúdos / Aulas Cadastradas -->
+        <div class="section-header">
+            <h2>Aulas e Tópicos Cadastrados</h2>
+        </div>
+
+        <div class="turmas-grid">
+            {% for cls in classes %}
+            <div class="stat-card" style="display: block;">
+                <h3>{{ cls.title }}</h3>
+                <p style="color: var(--text-muted); font-size: 0.85rem; margin: 8px 0;">{{ cls.description }}</p>
+                <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px;">
+                    {% for topic in cls.topics %}
+                        <span class="turma-code-badge" style="background: rgba(255,255,255,0.05); color: #FFF;">#{{ topic }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+            {% else %}
+            <p style="color: var(--text-muted);">Nenhum conteúdo específico adicionado para esta sala.</p>
+            {% endfor %}
+        </div>
+    </main>
+
+    <!-- Modal Adicionar Conteúdo -->
+    <div class="modal-overlay" id="modal-content">
+        <div class="modal-card">
+            <h2>Gerar Conteúdo com IA</h2>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px;">
+                Envie um PDF ou cole o texto do material. A IA irá analisar e gerar uma prévia para sua aprovação.
+            </p>
+
+            <form action="{{ url_for('preview_turma_content', turma_code=turma.code) }}" method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="turma_id" value="{{ turma.id }}">
+
+                <!-- Upload de PDF -->
+                <div class="input-group" style="background: rgba(252, 158, 79, 0.05); padding: 14px; border-radius: 12px; border: 1px dashed var(--primary);">
+                    <label style="color: var(--primary); font-weight: bold;">📄 Upload de PDF da Aula</label>
+                    <input type="file" name="pdf_file" accept=".pdf" style="border: none; background: transparent; padding: 6px 0;">
+                </div>
+
+                <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; margin: 14px 0;">— OU COLE O TEXTO —</div>
+
+                <div class="input-group">
+                    <label>Texto da Aula / Exercícios</label>
+                    <textarea name="description" rows="4" placeholder="Cole o texto do material aqui..."></textarea>
+                </div>
+
+                <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                    <button type="button" class="btn-primary" style="background: transparent; color: var(--text-muted);" onclick="closeModal('modal-content')">Cancelar</button>
+                    <button type="submit" class="btn-primary">Analisar com IA 🤖</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/teacher.js') }}"></script>
+</body>
+</html>

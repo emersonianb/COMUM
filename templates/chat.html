@@ -20,7 +20,12 @@
                         <span class="status-online">● Online • Scaffolding Groq Ativo</span>
                     </div>
                 </div>
-                <button id="toggle-sidebar-btn" class="btn-games-toggle">Flashcards & Jogos</button>
+                
+                <div class="header-actions">
+                    <!-- Botão para ativar/desativar voz -->
+                    <button id="toggle-audio-btn" class="btn-audio-toggle" title="Alternar leitura de áudio">🔊 Áudio: ON</button>
+                    <button id="toggle-sidebar-btn" class="btn-games-toggle">Flashcards & Jogos</button>
+                </div>
             </header>
 
             <!-- Tópicos selecionados em destaque -->
@@ -34,10 +39,13 @@
             {% endif %}
 
             <div class="chat-messages" id="chat-messages">
-                <!-- Mensagem de Boas-Vindas do Tutor -->
+                <!-- Mensagem de Boas-Vindas do Tutor com botão de áudio -->
                 <div class="message-wrapper tutor">
                     <div class="message-bubble">
-                        Olá! Vi que você selecionou os tópicos para praticar. Como posso te ajudar com o primeiro conceito?
+                        <div class="bubble-content">
+                            Olá! Vi que você selecionou os tópicos para praticar. Como posso te ajudar com o primeiro conceito?
+                        </div>
+                        <button class="btn-speak-msg" title="Ouvir resposta">🔊</button>
                     </div>
                 </div>
             </div>
@@ -99,11 +107,10 @@
     </div>
 
     <script>
-    const CLASS_ID = "{{ class_id }}";
-    // Usa default([]) para evitar erro caso a variável venha vazia
-    const TOPICS_QUEUE = {{ (topics_queue or []) | tojson }};
-    const SELECTED_TOPICS = {{ (selected_topics or []) | tojson }};
-</script>
+        const CLASS_ID = "{{ class_id }}";
+        const TOPICS_QUEUE = {{ (topics_queue or []) | tojson }};
+        const SELECTED_TOPICS = {{ (selected_topics or []) | tojson }};
+    </script>
     <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
 </body>
 </html>

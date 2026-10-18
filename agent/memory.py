@@ -1,10 +1,13 @@
 import os
+import random
+import string
+from datetime import datetime, timezone
 from pathlib import Path
 from supabase import create_client, Client
 
+
 class MemoryManager:
     def __init__(self, teachers_folder="data/teachers"):
-        # O parâmetro teachers_folder é mantido para compatibilidade de inicialização
         self.teachers_folder = Path(teachers_folder)
         
         url: str = os.getenv("SUPABASE_URL")
@@ -14,15 +17,33 @@ class MemoryManager:
             
         self.supabase: Client = create_client(url, key)
 
-    def _ensure_user(self, user_id: str):
-        """Garante que o usuário existe na tabela 'users'."""
+    def _ensure_user(self, user_id: str, role: str = "student"):
+        """Garante que o usuário e seu perfil existam no banco."""
+        if not user_id or not str(user_id).strip():
+            return  # Trava de segurança: impede inserção de ID nulo
+            
+        user_id = str(user_id).strip().lower()
+
         res = self.supabase.table("users").select("id").eq("id", user_id).execute()
         if not res.data:
+            # 1. Cria na tabela pai 'users'
             self.supabase.table("users").insert({
                 "id": user_id,
-                "level": "beginner",
-                "taught_words": []
+                "role": role
             }).execute()
+
+            # 2. Cria na tabela correspondente ao perfil
+            if role == "student":
+                self.supabase.table("students").insert({
+                    "user_id": user_id,
+                    "level": "beginner",
+                    "taught_words": []
+                }).execute()
+            elif role == "teacher":
+                self.supabase.table("teachers").insert({
+                    "user_id": user_id,
+                    "department": "Inglês"
+                }).execute()
 
     def update_history(self, user_id: str, message: str, role: str = "user"):
         """Adiciona uma mensagem ao histórico do usuário."""
@@ -49,10 +70,11 @@ class MemoryManager:
 
     def set_user_profile(self, user_id: str, level: str, module: str):
         self._ensure_user(user_id)
-        self.supabase.table("users").update({"level": level, "current_module": module}).eq("id", user_id).execute()
+        # Corrigido: .eq("user_id", user_id)
+        self.supabase.table("students").update({"level": level, "current_module": module}).eq("user_id", user_id).execute()
 
     def get_user_profile(self, user_id: str):
-        res = self.supabase.table("users").select("*").eq("id", user_id).execute()
+        res = self.supabase.table("vw_user_students").select("*").eq("id", user_id).execute()
         if not res.data:
             return {}
         u = res.data[0]
@@ -63,7 +85,7 @@ class MemoryManager:
         }
 
     def get_learning_state(self, user_id: str):
-        res = self.supabase.table("users").select("level, current_module, last_topic, current_category, updated_at").eq("id", user_id).execute()
+        res = self.supabase.table("vw_user_students").select("level, current_module, last_topic, current_category, updated_at").eq("id", user_id).execute()
         if not res.data:
             return {}
         return res.data[0]
@@ -75,46 +97,51 @@ class MemoryManager:
         if current_module is not None: payload["current_module"] = current_module
         if last_topic is not None: payload["last_topic"] = last_topic
         if current_category is not None: payload["current_category"] = current_category
-        payload["updated_at"] = "now()"
 
         if payload:
-            self.supabase.table("users").update(payload).eq("id", user_id).execute()
+            # Corrigido: .eq("user_id", user_id)
+            self.supabase.table("students").update(payload).eq("user_id", user_id).execute()
 
     def add_taught_word(self, user_id: str, word: str):
-        """Adiciona uma palavra ao array 'taught_words' na tabela 'users'."""
+        """Adiciona uma palavra ao array 'taught_words' na tabela 'students'."""
         self._ensure_user(user_id)
-        res = self.supabase.table("users").select("taught_words").eq("id", user_id).execute()
+        # Corrigido: busca e atualização na tabela 'students' usando 'user_id'
+        res = self.supabase.table("students").select("taught_words").eq("user_id", user_id).execute()
         words = (res.data[0].get("taught_words") or []) if res.data else []
         
         clean_word = word.lower().strip()
         if clean_word not in words:
             words.append(clean_word)
-            self.supabase.table("users").update({"taught_words": words}).eq("id", user_id).execute()
+            self.supabase.table("students").update({"taught_words": words}).eq("user_id", user_id).execute()
 
     def get_taught_words(self, user_id: str):
-        res = self.supabase.table("users").select("taught_words").eq("id", user_id).execute()
+        # Corrigido: .eq("user_id", user_id)
+        res = self.supabase.table("students").select("taught_words").eq("user_id", user_id).execute()
         if res.data and res.data[0].get("taught_words"):
             return res.data[0]["taught_words"]
         return []
 
     def list_classes(self, teacher_id="prof_01"):
         res = self.supabase.table("teacher_classes").select("id").eq("teacher_id", teacher_id).execute()
-        # Retorna como Path para manter compatibilidade com o .stem no código do agente
         return [Path(c["id"]) for c in (res.data or [])]
 
-    def get_class(self, class_id: str, teacher_id="prof_01"):
-        res_class = self.supabase.table("teacher_classes").select("*").eq("id", class_id).eq("teacher_id", teacher_id).execute()
-        if not res_class.data:
+    def get_class(self, class_id: str, teacher_id: str = "prof_01"):
+        res = (
+            self.supabase.table("teacher_classes")
+            .select("*")
+            .eq("id", class_id)
+            .eq("teacher_id", teacher_id)
+            .execute()
+        )
+        if not res.data:
             return None
-        
-        t_class = res_class.data[0]
-        res_topics = self.supabase.table("teacher_topics").select("name").eq("class_id", class_id).execute()
-        
+
+        c = res.data[0]
         return {
-            "class_id": t_class["id"],
-            "title": t_class.get("title"),
-            "description": t_class.get("description"),
-            "topics": [t["name"] for t in (res_topics.data or [])]
+            "class_id": c["id"],
+            "title": c.get("title"),
+            "description": c.get("description"),
+            "topics": c.get("topics") or []
         }
 
     def get_progress(self, user_id: str, class_id: str = None):
@@ -139,7 +166,6 @@ class MemoryManager:
     def update_topic_progress(self, user_id: str, class_id: str, topic: str, status: str, confidence: float = None):
         self._ensure_user(user_id)
         
-        # Verifica se o tópico já tem histórico de tentativas
         existing = (
             self.supabase.table("topic_progress")
             .select("attempts")
@@ -156,7 +182,7 @@ class MemoryManager:
             "topic": topic,
             "status": status,
             "attempts": attempts,
-            "last_review": "now()"
+            "last_review": datetime.now(timezone.utc).isoformat()
         }
         if confidence is not None:
             payload["confidence"] = confidence
@@ -164,18 +190,23 @@ class MemoryManager:
         self.supabase.table("topic_progress").upsert(payload, on_conflict="user_id, topic").execute()
 
     def get_pending_topics(self, user_id: str, class_id: str):
-        class_data = self.get_class(class_id)
-        if not class_data:
+        class_info = self.get_class_by_id(class_id)
+        if not class_info:
             return []
-        class_progress = self.get_progress(user_id, class_id)
-        return [
-            {"topic": t, "status": class_progress.get(t, {}).get("status", "not_seen")}
-            for t in class_data.get("topics", [])
-            if class_progress.get(t, {}).get("status") != "mastered"
-        ]
+
+        all_topics = class_info.get("topics", [])
+        progress = self.get_progress(user_id, class_id)
+
+        pending = []
+        for topic in all_topics:
+            status = progress.get(topic, {}).get("status", "not_seen")
+            if status != "mastered":
+                pending.append({"topic": topic, "status": status})
+
+        return pending
 
     def _mark_topic_presented(self, user_id: str, class_id: str, topic: str):
-        class_data = self.get_class(class_id)
+        class_data = self.get_class_by_id(class_id)
         if not class_data:
             return
         class_progress = self.get_progress(user_id, class_id)
@@ -184,3 +215,267 @@ class MemoryManager:
                 if official not in class_progress:
                     self.update_topic_progress(user_id, class_id, official, "presented")
                 break
+
+    def validate_turma(self, turma_code: str):
+        res = self.supabase.table("turmas").select("*").eq("code", turma_code.strip().upper()).execute()
+        return res.data[0] if res.data else None
+
+    def register_or_login_student(self, username: str, turma_code: str = None):
+        """
+        Autentica o aluno. 
+        Se ele já possui uma turma cadastrada, o turma_code não é obrigatório.
+        """
+        username = username.strip().lower()
+        if turma_code:
+            turma_code = turma_code.strip().upper()
+
+        # 1. Verifica se o usuário já existe
+        user_res = self.supabase.table("users").select("*").eq("id", username).execute()
+        
+        if user_res.data:
+            user = user_res.data[0]
+            if user.get("role") != "student":
+                return False, "Este nome de usuário pertence a uma conta de Professor."
+            
+            # Busca as turmas que o aluno já está matriculado
+            st_res = (
+                self.supabase.table("student_turmas")
+                .select("turma_code, turmas(name)")
+                .eq("student_id", username)
+                .order("joined_at", desc=True)
+                .execute()
+            )
+            enrolled_turmas = st_res.data or []
+
+            if enrolled_turmas:
+                # O aluno já tem pelo menos uma turma
+                if not turma_code:
+                    # Entra com a última turma cadastrada
+                    active = enrolled_turmas[0]
+                    t_code = active.get("turma_code")
+                    t_name = active.get("turmas", {}).get("name") if active.get("turmas") else "Sua Turma"
+                    return True, {
+                        "user_id": username,
+                        "role": "student",
+                        "turma_code": t_code,
+                        "turma_name": t_name
+                    }
+                else:
+                    # O aluno informou um código novo: valida e associa
+                    turma = self.validate_turma(turma_code)
+                    if not turma:
+                        return False, "Código de turma inválido. Verifique com seu professor."
+                    
+                    # Associa se ainda não estiver nessa turma específica
+                    already_in = any(t["turma_code"] == turma_code for t in enrolled_turmas)
+                    if not already_in:
+                        self.supabase.table("student_turmas").insert({
+                            "student_id": username,
+                            "turma_code": turma_code
+                        }).execute()
+                    
+                    return True, {
+                        "user_id": username,
+                        "role": "student",
+                        "turma_code": turma_code,
+                        "turma_name": turma.get("name")
+                    }
+            else:
+                # Aluno existe, mas não está em NENHUMA turma
+                if not turma_code:
+                    return False, "Você ainda não está em nenhuma turma. Por favor, informe o código da turma."
+                
+                turma = self.validate_turma(turma_code)
+                if not turma:
+                    return False, "Código de turma inválido."
+                
+                self.supabase.table("student_turmas").insert({
+                    "student_id": username,
+                    "turma_code": turma_code
+                }).execute()
+
+                return True, {
+                    "user_id": username,
+                    "role": "student",
+                    "turma_code": turma_code,
+                    "turma_name": turma.get("name")
+                }
+
+        else:
+            # PRIMEIRO ACESSO (Novo usuário): Exige obrigatoriamente o código da turma
+            if not turma_code:
+                return False, "Primeiro acesso! Por favor, informe o código da turma fornecido pelo professor."
+            
+            turma = self.validate_turma(turma_code)
+            if not turma:
+                return False, "Código de turma inválido. Verifique com seu professor."
+
+            # Cria conta e vincula à turma
+            self.supabase.table("users").insert({"id": username, "role": "student"}).execute()
+            self.supabase.table("students").insert({"user_id": username, "level": "A1"}).execute()
+            self.supabase.table("student_turmas").insert({
+                "student_id": username,
+                "turma_code": turma_code
+            }).execute()
+
+            return True, {
+                "user_id": username,
+                "role": "student",
+                "turma_code": turma_code,
+                "turma_name": turma.get("name")
+            }
+
+    def register_or_login_teacher(self, username: str, department: str = "Inglês"):
+        username = username.strip().lower()
+
+        user_res = self.supabase.table("users").select("*").eq("id", username).execute()
+        if user_res.data:
+            user = user_res.data[0]
+            if user.get("role") != "teacher":
+                return False, "Este nome de usuário pertence a uma conta de Aluno."
+        else:
+            self.supabase.table("users").insert({"id": username, "role": "teacher"}).execute()
+            self.supabase.table("teachers").insert({"user_id": username, "department": department}).execute()
+
+        return True, {"user_id": username, "role": "teacher"}
+
+    def generate_turma_code(self, length: int = 6) -> str:
+        chars = string.ascii_uppercase + string.digits
+        while True:
+            code = ''.join(random.choice(chars) for _ in range(length))
+            res = self.supabase.table("turmas").select("code").eq("code", code).execute()
+            if not res.data:
+                return code
+
+    def create_turma(self, teacher_id: str, name: str) -> dict:
+        code = self.generate_turma_code()
+        turma_id = f"turma_{code.lower()}"
+        
+        res = self.supabase.table("turmas").insert({
+            "id": turma_id,
+            "name": name,
+            "code": code,
+            "teacher_id": teacher_id
+        }).execute()
+        
+        return res.data[0] if res.data else None
+
+    def get_teacher_turmas(self, teacher_id: str) -> list:
+        res = (
+            self.supabase.table("turmas")
+            .select("*")
+            .eq("teacher_id", teacher_id)
+            .order("created_at", desc=True)
+            .execute()
+        )
+        turmas = res.data or []
+
+        for turma in turmas:
+            st_res = (
+                self.supabase.table("student_turmas")
+                .select("id", count="exact")
+                .eq("turma_code", turma["code"])
+                .execute()
+            )
+            turma["students_count"] = st_res.count if st_res.count is not None else len(st_res.data or [])
+
+        return turmas
+
+    def get_turma_details(self, turma_code: str, teacher_id: str) -> dict:
+        t_res = (
+            self.supabase.table("turmas")
+            .select("*")
+            .eq("code", turma_code)
+            .eq("teacher_id", teacher_id)
+            .execute()
+        )
+        if not t_res.data:
+            return None
+        
+        turma = t_res.data[0]
+
+        st_res = (
+            self.supabase.table("student_turmas")
+            .select("student_id, joined_at")
+            .eq("turma_code", turma_code)
+            .execute()
+        )
+        enrolled_students = st_res.data or []
+        student_ids = [s["student_id"] for s in enrolled_students]
+
+        students_progress = []
+        if student_ids:
+            profiles_res = (
+                self.supabase.table("students")
+                .select("user_id, level, current_module")
+                .in_("user_id", student_ids)
+                .execute()
+            )
+            profiles_map = {p["user_id"]: p for p in (profiles_res.data or [])}
+
+            prog_res = (
+                self.supabase.table("topic_progress")
+                .select("user_id, topic, status, confidence")
+                .in_("user_id", student_ids)
+                .execute()
+            )
+            progress_data = prog_res.data or []
+
+            for st in enrolled_students:
+                uid = st["student_id"]
+                prof = profiles_map.get(uid, {})
+                user_topics = [p for p in progress_data if p["user_id"] == uid]
+                mastered_count = sum(1 for t in user_topics if t.get("status") == "mastered")
+                
+                students_progress.append({
+                    "student_id": uid,
+                    "level": prof.get("level", "A1"),
+                    "current_module": prof.get("current_module", "Geral"),
+                    "joined_at": st.get("joined_at"),
+                    "topics_count": len(user_topics),
+                    "mastered_count": mastered_count
+                })
+
+        classes_res = (
+            self.supabase.table("teacher_classes")
+            .select("*")
+            .eq("turma_id", turma["id"])
+            .order("created_at", desc=True)
+            .execute()
+        )
+
+        return {
+            "turma": turma,
+            "students": students_progress,
+            "classes": classes_res.data or []
+        }
+
+    def add_turma_class_content(self, teacher_id: str, turma_id: str, title: str, description: str, topics: list) -> dict:
+        """Cadastra uma nova aula/conteúdo com tópicos para uma turma específica."""
+        class_id = f"class_{self.generate_turma_code(8).lower()}"
+        res = self.supabase.table("teacher_classes").insert({
+            "id": class_id,
+            "teacher_id": teacher_id,
+            "turma_id": turma_id,
+            "title": title,
+            "description": description,
+            "topics": topics
+        }).execute()
+        
+        return res.data[0] if res.data else None
+
+    def get_classes_by_turma_code(self, turma_code: str) -> list:
+        if not turma_code:
+            return []
+        
+        turma_res = self.supabase.table("turmas").select("id").eq("code", turma_code.upper()).execute()
+        if not turma_res.data:
+            return []
+        
+        turma_id = turma_res.data[0]["id"]
+        classes_res = self.supabase.table("teacher_classes").select("*").eq("turma_id", turma_id).execute()
+        return classes_res.data or []
+
+    def get_class_by_id(self, class_id: str) -> dict:
+        res = self.supabase.table("teacher_classes").select("*").eq("id", class_id).execute()
+        return res.data[0] if res.data else None

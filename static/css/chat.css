@@ -229,3 +229,210 @@
 
 .panel-content { padding: 20px; }
 .hidden { display: none !important; }
+
+/* Ações do Header */
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Botão de Toggle de Áudio no Header */
+.btn-audio-toggle {
+    background: #4a5568;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-audio-toggle:hover {
+    background: #2d3748;
+}
+
+.btn-audio-toggle.disabled {
+    background: #cbd5e0;
+    color: #4a5568;
+}
+
+/* Estrutura do Balão com Botão de Áudio */
+.message-bubble {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.message-wrapper.tutor .message-bubble {
+    padding-right: 35px; /* Espaço para o botão 🔊 */
+}
+
+.btn-speak-msg {
+    position: absolute;
+    bottom: 6px;
+    right: 8px;
+    background: transparent;
+    border: none;
+    font-size: 0.9rem;
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 0.2s ease, transform 0.1s ease;
+}
+
+.btn-speak-msg:hover {
+    opacity: 1;
+    transform: scale(1.15);
+}
+
+/* Animação de Giro 3D dos Flashcards */
+.flashcard-card {
+    perspective: 1000px;
+    height: 200px;
+    cursor: pointer;
+    margin-bottom: 15px;
+}
+
+.flashcard-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    text-align: center;
+    transition: transform 0.6s;
+    transform-style: preserve-3d;
+}
+
+.flashcard-inner.flipped {
+    transform: rotateY(180deg);
+}
+
+.flashcard-front, .flashcard-back {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    border-radius: 12px;
+    box-sizing: border-box;
+}
+
+.flashcard-front {
+    background: #1e1e2f;
+    border: 2px solid #fc9e4f;
+    color: #fff;
+}
+
+.flashcard-back {
+    background: #2a2a40;
+    border: 2px solid #2ed573;
+    color: #fff;
+    transform: rotateY(180deg);
+}
+
+/* ==========================================================
+   PAINEL LATERAL & CORREÇÃO DE SCROLL
+   ========================================================== */
+.side-panel {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    max-height: 100vh;
+    overflow: hidden;
+}
+
+.panel-content {
+    flex: 1;
+    overflow-y: auto !important; /* Habilita a rolagem vertical */
+    padding: 16px;
+    box-sizing: border-box;
+}
+
+/* Scrollbar estilizada */
+.panel-content::-webkit-scrollbar {
+    width: 6px;
+}
+.panel-content::-webkit-scrollbar-thumb {
+    background: rgba(252, 158, 79, 0.4);
+    border-radius: 4px;
+}
+
+/* ==========================================================
+   ESTILOS DOS FLASHCARDS E BOTÕES
+   ========================================================== */
+.flashcard-card {
+    perspective: 1000px;
+    height: 220px;
+    cursor: pointer;
+    margin-bottom: 16px;
+}
+
+.flashcard-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    text-align: center;
+    transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-style: preserve-3d;
+}
+
+.flashcard-inner.flipped {
+    transform: rotateY(180deg);
+}
+
+.flashcard-front, .flashcard-back {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    border-radius: 14px;
+    box-sizing: border-box;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+}
+
+.flashcard-front {
+    background: #1e1b2e;
+    border: 2px solid #fc9e4f;
+    color: #ffffff;
+}
+
+.flashcard-back {
+    background: #192a3a;
+    border: 2px solid #2ed573;
+    color: #ffffff;
+    transform: rotateY(180deg);
+}
+
+/* Botões do Painel Lateral */
+.btn-next-card, .btn-game-start {
+    width: 100%;
+    padding: 12px 18px;
+    background: #fc9e4f;
+    color: #0d0c1d;
+    border: none;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(252, 158, 79, 0.2);
+    display: block;
+    text-align: center;
+}
+
+.btn-next-card:hover, .btn-game-start:hover {
+    background: #f88c30;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(252, 158, 79, 0.35);
+}

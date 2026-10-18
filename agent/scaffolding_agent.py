@@ -1,5 +1,3 @@
-# agent/scaffolding_agent.py
-
 class ScaffoldingAgent:
     def __init__(self):
         # Definição dos níveis de suporte do andaime

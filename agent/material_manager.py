@@ -2,11 +2,10 @@ import json
 import os
 from datetime import datetime
 from pathlib import Path
-import fitz  # PyMuPDF
+import pymupdf as fitz
 from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage
-from langchain_community.embeddings import HuggingFaceEmbeddings
-
+from langchain_huggingface import HuggingFaceEmbeddings
 
 class MaterialFormatter:
     def __init__(self, model="openai/gpt-oss-120b"):

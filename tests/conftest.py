@@ -1,78 +1,37 @@
+import os
 import pytest
-import json
-from pathlib import Path
-from unittest.mock import patch, MagicMock
+from dotenv import load_dotenv
 
-from agent.material_manager import MaterialManager
-from agent.rag import GuideRAG
+# Carrega variáveis de ambiente (.env) para execução dos testes
+load_dotenv()
+
 from agent.memory import MemoryManager
+from agent.core_2 import AgenticTutor
+from agent.content_agent import ContentAgent
 from agent.llm_handler import LLMHandler
-from agent.emotions import EmotionAnalyser
-
-
-@pytest.fixture
-def fake_material_path(tmp_path):
-    """Cria um material JSON simples para testes."""
-    material = {
-        "items": [{
-            "tema": "Indefinido",
-            "conteudo": "Yesterday I went to the supermarket and bought some bread, milk, and vegetables. It was a sunny day so I walked instead of taking the bus.\nQueria entender melhor o vocabulario e a gramatica envolvida."
-        }]
-    }
-
-    file_path = tmp_path / "sample_guide.json"
-    with open(file_path, "w", encoding="utf-8") as f:
-        json.dump(material, f, indent=4)
-
-    return file_path
-
-
-@pytest.fixture
-def material_manager():
-    """Instancia MaterialManager real."""
-    return MaterialManager()
-
-
-@pytest.fixture
-def rag_system(tmp_path):
-    user_id = "user123"
-    user_folder = tmp_path / "data" / "users" / user_id
-    user_folder.mkdir(parents=True, exist_ok=True)
-
-    vocab_path = user_folder / "Vocabulario.json"
-    vocab_path.write_text(json.dumps({
-        "items": [
-            {"tema": "Compras", "conteudo": "I went to the supermarket yesterday."}
-        ]
-    }), encoding="utf-8")
-
-    return GuideRAG(user_id=str(user_folder.parts[-1]), categoria="vocabulario")
-
-def test_rag_index_and_query(rag_system):
-    query = "supermarket"
-    results = rag_system.query(query, k=1)
-
-    assert isinstance(results, str), "O retorno da consulta deve ser uma string"
-    assert "supermarket" in results, "O resultado deve conter o termo consultado"
-
+from agent.rag import GuideRAG
 
 @pytest.fixture
 def memory_manager():
+    """Fixture para fornecer a instância do gerenciador de memória do Supabase."""
     return MemoryManager()
 
+@pytest.fixture
+def tutor_agent():
+    """Fixture para o orquestrador principal do tutor (AgenticTutor)."""
+    return AgenticTutor()
+
+@pytest.fixture
+def content_agent(memory_manager):
+    """Fixture para o agente de conteúdo com a memória injetada."""
+    return ContentAgent(memory=memory_manager)
+
+@pytest.fixture
+def rag_agent():
+    """Fixture para o mecanismo de busca vetorial RAG."""
+    return GuideRAG(user_id="test_user")
 
 @pytest.fixture
 def llm_handler():
-    """LLMHandler real, mas vamos mockar o método interno que chama Groq."""
-    handler = LLMHandler()
-
-    handler.generate = MagicMock(return_value="Resposta simulada")
-    return handler
-
-
-@pytest.fixture
-def emotion_analyser():
-    analyser = EmotionAnalyser()
-
-    analyser.analyse = MagicMock(return_value={"emotion": "neutral"})
-    return analyser
+    """Fixture para a integração com a API da Groq."""
+    return LLMHandler()

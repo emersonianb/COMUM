@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Painel do Professor - COMUM</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/teacher.css') }}">
+</head>
+<body>
+
+    <!-- Menu Lateral -->
+    <aside class="sidebar">
+        <div class="sidebar-brand">COMUM</div>
+        <ul class="sidebar-menu">
+            <li><a href="{{ url_for('teacher_dashboard') }}" class="active">🏫 Minhas Salas</a></li>
+        </ul>
+        <div class="sidebar-footer">
+            <a href="{{ url_for('logout') }}" style="color: #ff6b6b;">🚪 Sair</a>
+        </div>
+    </aside>
+
+    <!-- Conteúdo Principal -->
+    <main class="main-content">
+        <div class="top-bar">
+            <div class="page-title">
+                <h1>Visão Geral</h1>
+                <p>Bem-vindo, professor @{{ teacher_id }}</p>
+            </div>
+            <button class="btn-primary" onclick="openModal('modal-turma')">+ Criar Nova Sala</button>
+        </div>
+
+        <!-- Estatísticas -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <span>Total de Salas</span>
+                <h2>{{ total_turmas }}</h2>
+            </div>
+            <div class="stat-card">
+                <span>Total de Alunos</span>
+                <h2>{{ total_students }}</h2>
+            </div>
+        </div>
+
+        <!-- Grid de Salas -->
+        <div class="section-header">
+            <h2>Suas Turmas</h2>
+        </div>
+
+        <div class="turmas-grid">
+            {% for turma in turmas %}
+            <a href="{{ url_for('view_turma', turma_code=turma.code) }}" class="turma-card">
+                <div class="turma-card-header">
+                    <h3>{{ turma.name }}</h3>
+                    <span class="turma-code-badge">{{ turma.code }}</span>
+                </div>
+                <div class="turma-card-footer">
+                    👥 {{ turma.students_count }} aluno(s) cadastrado(s)
+                </div>
+            </a>
+            {% else %}
+            <p style="color: var(--text-muted);">Nenhuma sala criada ainda. Clique no botão acima para criar a primeira.</p>
+            {% endfor %}
+        </div>
+    </main>
+
+    <!-- Modal Criar Sala -->
+    <div class="modal-overlay" id="modal-turma">
+        <div class="modal-card">
+            <h2 style="margin-bottom: 20px;">Nova Sala de Aula</h2>
+            <form action="{{ url_for('create_turma') }}" method="POST">
+                <div class="input-group">
+                    <label>Nome da Sala / Turma</label>
+                    <input type="text" name="name" placeholder="Ex: Inglês Básico - Turma A" required>
+                </div>
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button type="button" class="btn-primary" style="background: transparent; color: var(--text-muted);" onclick="closeModal('modal-turma')">Cancelar</button>
+                    <button type="submit" class="btn-primary">Criar Sala</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/teacher.js') }}"></script>
+</body>
+</html>

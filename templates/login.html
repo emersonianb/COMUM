@@ -2,44 +2,55 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - COMUM</title>
-    <style>
-        body { background: #020122; color: white; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .login-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 40px; border-radius: 16px; width: 320px; text-align: center; }
-        h2 { color: #FC9E4F; margin-bottom: 24px; }
-        .role-option { display: flex; gap: 10px; margin-bottom: 20px; justify-content: center; }
-        .role-option label { background: rgba(255,255,255,0.1); padding: 10px 16px; border-radius: 8px; cursor: pointer; flex: 1; border: 1px solid transparent; }
-        .role-option input[type="radio"] { display: none; }
-        .role-option input[type="radio"]:checked + span { color: #FC9E4F; font-weight: bold; }
-        .input-group { margin-bottom: 20px; text-align: left; }
-        .input-group label { display: block; font-size: 0.85rem; color: #AAA; margin-bottom: 5px; }
-        .input-group input { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.3); color: white; box-sizing: border-box; }
-        .btn-submit { width: 100%; background: #FC9E4F; color: #020122; padding: 12px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; }
-    </style>
+    
+    <!-- Fonte externa -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Arquivo CSS local -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
 </head>
 <body>
+
+    <div class="ambient-glow"></div>
+
     <div class="login-card">
-        <h2>Entrar no COMUM</h2>
+        <h2 class="brand-title">COMUM</h2>
+        <p class="brand-subtitle">Plataforma de Aprendizagem Interativa</p>
+
+        {% if error %}
+            <div class="error-msg">
+                <span>⚠️</span> {{ error }}
+            </div>
+        {% endif %}
+
         <form action="/login" method="POST">
+            <!-- Seletor de Perfil -->
+            <div class="role-selector">
+                <div class="role-option">
+                    <input type="radio" id="role-student" name="role" value="student" checked>
+                    <label for="role-student">Aluno</label>
+                </div>
+                <div class="role-option">
+                    <input type="radio" id="role-teacher" name="role" value="teacher">
+                    <label for="role-teacher">Professor</label>
+                </div>
+            </div>
+
+            <!-- Nome de Usuário -->
             <div class="input-group">
-                <label>Seu Nome</label>
-                <input type="text" name="username" placeholder="Digite seu nome..." required>
+                <label for="username">Nome de Usuário</label>
+                <input type="text" id="username" name="username" placeholder="Digite seu usuário..." autocomplete="off" required>
             </div>
 
-            <p style="font-size: 0.9rem; color: #AAA; margin-bottom: 10px;">Eu sou um:</p>
-            <div class="role-option">
-                <label>
-                    <input type="radio" name="role" value="aluno" checked>
-                    <span>Aluno</span>
-                </label>
-                <label>
-                    <input type="radio" name="role" value="professor">
-                    <span>Professor</span>
-                </label>
-            </div>
-
-            <button type="submit" class="btn-submit">Entrar</button>
+            <button type="submit" class="btn-submit">Entrar no Sistema</button>
         </form>
     </div>
+
+    <!-- Arquivo JavaScript local -->
+    <script src="{{ url_for('static', filename='js/login.js') }}"></script>
 </body>
 </html>

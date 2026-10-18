@@ -1,4 +1,4 @@
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 from agent.memory import MemoryManager
 
 class GuideRAG:
@@ -12,7 +12,7 @@ class GuideRAG:
             model_name="sentence-transformers/all-MiniLM-L6-v2"
         )
 
-    def query(self, question, k=3):
+    def query(self, question, k=3, match_threshold=0.25):
         # 1. Gera o vetor da pergunta feita pelo usuário
         query_vector = self.embeddings.embed_query(question)
 

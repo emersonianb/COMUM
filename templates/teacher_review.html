@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Revisar Aula - COMUM</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/teacher.css') }}">
+</head>
+<body style="justify-content: center; align-items: center; display: flex; min-height: 100vh; padding: 40px 0;">
+
+    <div class="modal-card" style="max-width: 620px; width: 90%;">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+            <span style="font-size: 1.6rem;">🤖</span>
+            <h2>Prévia Gerada pela IA</h2>
+        </div>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 24px;">
+            Confira e edite as informações geradas abaixo. <strong>Apenas ao clicar em "Aprovar e Salvar" os dados serão gravados no banco.</strong>
+        </p>
+
+        <form action="{{ url_for('save_turma_content', turma_code=turma_code) }}" method="POST">
+            <input type="hidden" name="turma_id" value="{{ turma_id }}">
+
+            <div class="input-group">
+                <label>Título Sugerido</label>
+                <input type="text" name="title" value="{{ suggested_title }}" required>
+            </div>
+
+            <div class="input-group">
+                <label>Resumo / Descrição Pedagógica</label>
+                <textarea name="description" rows="4" required>{{ suggested_description }}</textarea>
+            </div>
+
+            <div class="input-group">
+                <label>Tópicos Extraídos (separados por vírgula)</label>
+                <input type="text" name="topics" value="{{ suggested_topics }}" required>
+            </div>
+
+            <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 28px;">
+                <!-- Descarta e volta para a página da turma sem gravar nada -->
+                <a href="{{ url_for('view_turma', turma_code=turma_code) }}" class="btn-primary" style="background: rgba(255,255,255,0.08); color: var(--text-muted); text-decoration: none;">
+                    ❌ Descartar / Refazer
+                </a>
+                
+                <!-- Envia os dados revisados para salvar no Supabase -->
+                <button type="submit" class="btn-primary" style="background: #4cd137; color: #020122;">
+                    ✅ Aprovar e Salvar
+                </button>
+            </div>
+        </form>
+    </div>
+
+</body>
+</html>

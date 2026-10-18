@@ -6,17 +6,106 @@
     <title>Escolha sua Aula — comum</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/brainstorm.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* Estilos adicionais para o card/bar de nova turma */
+        .join-turma-box {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 15px;
+            backdrop-filter: blur(10px);
+        }
+        .join-turma-info h4 {
+            margin: 0 0 4px 0;
+            color: #f5f5f4;
+            font-size: 1.05rem;
+        }
+        .join-turma-info p {
+            margin: 0;
+            color: #a8a29e;
+            font-size: 0.88rem;
+        }
+        .join-form {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .join-input {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 10px 14px;
+            color: #fff;
+            font-size: 0.95rem;
+            text-transform: uppercase;
+            outline: none;
+        }
+        .join-input:focus {
+            border-color: #6366f1;
+        }
+        .btn-join {
+            background: #6366f1;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-join:hover {
+            background: #4f46e5;
+        }
+        .feedback-msg {
+            width: 100%;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+        }
+        .feedback-success { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.4); }
+        .feedback-error { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); }
+    </style>
 </head>
 <body>
 
     <div class="brand-logo">comum</div>
 
-    <div class="app-container" style="justify-content: center; gap: 30px;">
+    <div class="app-container" style="justify-content: center; gap: 20px;">
         <header class="header">
             <span class="badge-aula">Sua Jornada</span>
             <h1>Escolha a aula de hoje</h1>
             <p>Selecione um dos módulos abaixo para iniciar o diagnóstico e a aula interativa</p>
         </header>
+
+        <!-- Mensagens de Feedback (Sucesso ou Erro ao entrar numa nova turma) -->
+        {% if success_msg %}
+            <div class="feedback-msg feedback-success">
+                ✅ {{ success_msg }}
+            </div>
+        {% endif %}
+        {% if error_msg %}
+            <div class="feedback-msg feedback-error">
+                ⚠️ {{ error_msg }}
+            </div>
+        {% endif %}
+
+        <!-- Bar / Box para Entrar em Nova Sala -->
+        <div class="join-turma-box">
+            <div class="join-turma-info">
+                <h4>🔑 Participar de uma nova sala</h4>
+                <p>Recebeu o código de outra turma? Digite abaixo para adicionar aos seus módulos.</p>
+            </div>
+            <form action="/join-turma" method="POST" class="join-form">
+                <input type="text" name="turma_code" class="join-input" placeholder="EX: ING101" required autocomplete="off">
+                <button type="submit" class="btn-join">Entrar na Sala</button>
+            </form>
+        </div>
 
         <!-- Grid de Cards de Aulas -->
         <main class="classes-grid">
@@ -32,9 +121,10 @@
                 </a>
             </div>
             {% else %}
-            <p style="color: #a8a29e; text-align: center; grid-column: 1/-1;">
-                Nenhuma aula disponível no momento.
-            </p>
+            <div style="grid-column: 1/-1; text-align: center; color: #a8a29e; padding: 40px 0;">
+                <p>Você ainda não está inscrito em nenhuma sala ou não há aulas disponíveis.</p>
+                <p><small>Utilize o campo acima para digitar o código fornecido pelo seu professor.</small></p>
+            </div>
             {% endfor %}
         </main>
     </div>
