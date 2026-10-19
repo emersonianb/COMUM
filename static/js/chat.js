@@ -7,7 +7,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const chatMessages = document.getElementById("chat-messages");
     const typingIndicator = document.getElementById("typing-indicator");
     
-    const toggleSidebarBtn = document.getElementById("toggle-sidebar-btn");
+    // Suporte para ambos os IDs possíveis no HTML (toggle-panel-btn ou toggle-sidebar-btn)
+    const toggleSidebarBtn = document.getElementById("toggle-panel-btn") || document.getElementById("toggle-sidebar-btn");
     const closePanelBtn = document.getElementById("close-panel-btn");
     const sidePanel = document.getElementById("side-panel");
     const tabBtns = document.querySelectorAll(".tab-btn");
@@ -28,6 +29,28 @@ document.addEventListener("DOMContentLoaded", () => {
     let currentGameData = null;
 
     const currentClassId = typeof CLASS_ID !== "undefined" ? CLASS_ID : "class_01";
+
+    // --------------------------------------------------
+    // 2. REPRODUÇÃO DE ÁUDIO (TEXT-TO-SPEECH)
+    // --------------------------------------------------
+    function speakText(text) {
+        if (!('speechSynthesis' in window)) {
+            alert("Seu navegador não suporta a síntese de voz.");
+            return;
+        }
+
+        window.speechSynthesis.cancel(); // Para qualquer áudio em execução
+
+        // Remove tags HTML/Markdown simples do texto antes de falar
+        const cleanText = text.replace(/<[^>]*>?/gm, '').replace(/[\*\_~`#]/g, '');
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+        
+        // Define o idioma preferencial (pode ser ajustado para 'en-US' se as respostas forem em inglês)
+        utterance.lang = "pt-BR";
+        utterance.rate = 0.95; // Velocidade da fala
+        
+        window.speechSynthesis.speak(utterance);
+    }
 
     // --------------------------------------------------
     // 3. CHAT E ENVIO DE MENSAGENS
@@ -90,6 +113,12 @@ document.addEventListener("DOMContentLoaded", () => {
             speakBtn.className = "btn-speak-msg";
             speakBtn.title = "Ouvir resposta";
             speakBtn.innerText = "🔊";
+            
+            // Evento de clique no botão de voz
+            speakBtn.addEventListener("click", () => {
+                speakText(text);
+            });
+
             bubble.appendChild(speakBtn);
         }
 
@@ -99,6 +128,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function showTyping(show) {
+        if (!typingIndicator) return;
         if (show) {
             typingIndicator.classList.remove("hidden");
         } else {
@@ -193,7 +223,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // --------------------------------------------------
-    // 6. MINI-GAMES DINÂMICOS (EVENT DELEGATION SEGURO)
+    // 6. MINI-GAMES DINÂMICOS
     // --------------------------------------------------
     async function loadMiniGame() {
         if (!tabGames) return;
@@ -211,10 +241,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 currentGameData = data.game;
                 renderMiniGame(currentGameData);
             } else {
-                tabGames.innerHTML = `<p>Não foi possível carregar o mini-game.</p>`;
+                tabGames.innerHTML = `<p style="padding: 16px;">Não foi possível carregar o mini-game.</p>`;
             }
         } catch (err) {
-            tabGames.innerHTML = `<p>Erro ao carregar o mini-game.</p>`;
+            tabGames.innerHTML = `<p style="padding: 16px;">Erro ao carregar o mini-game.</p>`;
         }
     }
 
@@ -252,7 +282,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // RENDERIZADORES COM DATA-ATTRIBUTES
     function renderAvatarQuestType(game) {
         let html = `
             <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(252,158,79,0.3); border-radius: 12px; padding: 12px; margin-bottom: 15px;">
@@ -337,7 +366,8 @@ document.addEventListener("DOMContentLoaded", () => {
                         `).join('')}
                     </div>
 
-                    <div style="min-height: 38px; padding: 6px; background: #1a1a24; border: 1px dashed #fc9e4f; border-radius: 6px; margin-bottom: 8px;" id="answer-box-${idx}"></div>
+                    <div style="min-height: 38px; padding: 6px; background: #1a1a24; border: 1px dashed #fc9e4f; border-radius: 6px; margin-bottom: 8px; cursor: pointer;" 
+                         id="answer-box-${idx}" title="Clique para limpar e reiniciar"></div>
 
                     <button class="unscramble-verify-btn" data-item="${idx}" style="width: 100%; padding: 8px; background: #2ed573; color: #000; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">Verificar Frase</button>
                     <p id="unscramble-feedback-${idx}" style="margin-top: 8px; font-size: 0.85rem; display: none;"></p>
@@ -397,7 +427,15 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
             }
 
-            // D. Clique em Verificar Unscramble
+            // D. Clique para limpar Caixa de Resposta do Unscramble
+            const answerBox = e.target.closest("[id^='answer-box-']");
+            if (answerBox) {
+                const itemIdx = parseInt(answerBox.id.replace('answer-box-', ''), 10);
+                resetUnscrambleBox(itemIdx);
+                return;
+            }
+
+            // E. Clique em Verificar Unscramble
             const verifyBtn = e.target.closest(".unscramble-verify-btn");
             if (verifyBtn) {
                 const itemIdx = parseInt(verifyBtn.dataset.item, 10);
@@ -405,7 +443,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
             }
 
-            // E. Clique nos Pares do Match
+            // F. Clique nos Pares do Match
             const matchBtn = e.target.closest(".match-opt-btn");
             if (matchBtn) {
                 const pairIdx = parseInt(matchBtn.dataset.pair, 10);
@@ -499,6 +537,22 @@ document.addEventListener("DOMContentLoaded", () => {
         wordSpan.style.pointerEvents = "none";
     }
 
+    function resetUnscrambleBox(itemIdx) {
+        const box = document.getElementById(`answer-box-${itemIdx}`);
+        const wordsPool = document.getElementById(`words-pool-${itemIdx}`);
+        const feedback = document.getElementById(`unscramble-feedback-${itemIdx}`);
+
+        if (box) box.innerText = "";
+        if (feedback) feedback.style.display = "none";
+        if (wordsPool) {
+            const spans = wordsPool.querySelectorAll(".unscramble-word");
+            spans.forEach(span => {
+                span.style.opacity = "1";
+                span.style.pointerEvents = "auto";
+            });
+        }
+    }
+
     function handleUnscrambleVerify(itemIdx) {
         if (!currentGameData || !currentGameData.items) return;
         const item = currentGameData.items[itemIdx];
@@ -516,7 +570,7 @@ document.addEventListener("DOMContentLoaded", () => {
             feedback.innerText = "✅ Perfeito! Frase montada corretamente.";
         } else {
             feedback.style.color = "#ff4757";
-            feedback.innerText = `❌ Quase! A frase correta é: "${item.correct}"`;
+            feedback.innerText = `❌ Quase! A frase correta é: "${item.correct}" (Clique na caixa para tentar novamente)`;
         }
         feedback.style.display = "block";
     }

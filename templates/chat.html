@@ -14,13 +14,17 @@
         <main class="chat-container">
             <header class="chat-header">
                 <div class="tutor-info">
-                    <div class="avatar-tutor"></div>
+                    <div class="avatar-tutor">🤖</div>
                     <div>
                         <h2>Tutor COMUM</h2>
                         <span class="status-online">● Online • Scaffolding Groq Ativo</span>
                     </div>
                 </div>
                 
+                <!-- BOTÃO QUE FALTAVA PARA ABRIR O PAINEL -->
+                <div class="header-actions">
+                    <button id="toggle-panel-btn" class="btn-games-toggle">🃏 Flashcards & Jogos</button>
+                </div>
             </header>
 
             <!-- Tópicos selecionados em destaque -->
@@ -34,7 +38,7 @@
             {% endif %}
 
             <div class="chat-messages" id="chat-messages">
-                <!-- Mensagem de Boas-Vindas do Tutor com botão de áudio -->
+                <!-- Mensagem de Boas-Vindas do Tutor -->
                 <div class="message-wrapper tutor">
                     <div class="message-bubble">
                         <div class="bubble-content">
