@@ -5,7 +5,7 @@ from pathlib import Path
 import pymupdf as fitz
 from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
 
 class MaterialFormatter:
     def __init__(self, model="openai/gpt-oss-120b"):
@@ -47,8 +47,9 @@ class MaterialManager:
         self.memory_manager = memory_manager
         self.formatter = formatter
         # Modelo para geração dos vetores para o Supabase (pgvector)
-        self.embeddings = HuggingFaceEmbeddings(
-            model_name="sentence-transformers/all-MiniLM-L6-v2"
+        self.embeddings = HuggingFaceInferenceAPIEmbeddings(
+        api_key=os.getenv("HUGGINGFACEHUB_API_TOKEN"),
+        model_name="sentence-transformers/all-MiniLM-L6-v2"
         )
 
     def _extract_text_from_file(self, file_path):
