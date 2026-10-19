@@ -1,7 +1,10 @@
 import os
 import urllib.parse
 from functools import wraps
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session, flash, get_flashed_messages
+from flask import (
+    Flask, render_template, request, jsonify, redirect, 
+    url_for, session, flash, get_flashed_messages, make_response
+)
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -47,6 +50,18 @@ def get_memory_manager():
 
 
 # ==========================================================
+# 🛠️ FUNÇÃO AUXILIAR PARA PARSE DE TÓPICOS
+# ==========================================================
+def parse_topics(topics_raw: str) -> list:
+    """Divide tópicos preferencialmente por ponto e vírgula (;) ou quebras de linha."""
+    if not topics_raw:
+        return []
+    normalized = topics_raw.replace("\r\n", ";").replace("\n", ";")
+    delimiter = ";" if ";" in normalized else ","
+    return [t.strip() for t in normalized.split(delimiter) if t.strip()]
+
+
+# ==========================================================
 # 📍 ROTAS DE NAVEGAÇÃO (PÁGINAS)
 # ==========================================================
 
@@ -59,7 +74,14 @@ def index():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'GET':
-        return render_template('login.html')
+        # Limpa a sessão ao acessar a tela de login para permitir trocar de conta/papel livremente
+        session.clear()
+        
+        response = make_response(render_template('login.html'))
+        # Impede o cache do navegador para evitar problemas ao usar o botão "Voltar"
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        return response
 
     username = (request.form.get('username') or '').strip().lower()
     role = request.form.get('role', 'student')
@@ -82,7 +104,7 @@ def login():
         session['user_id'] = username
         session['role'] = 'student'
 
-        # Puxa do Supabase as turmas que o aluno já pertence
+        # Puxa do Supabase as turmas a que o aluno já pertence
         try:
             res = memory_mgr.supabase.table("student_turmas")\
                 .select("turma_code")\
@@ -93,6 +115,7 @@ def login():
             session['student_turmas'] = []
 
         return redirect('/select-cards')
+
 
 @app.route("/logout")
 def logout():
@@ -126,7 +149,7 @@ def join_turma():
     except Exception as e:
         print(f"🚨 Erro ao salvar student_turmas no Supabase: {e}")
 
-    # 2. ATUALIZA A SESSÃO IMEDIATAMENTE (Exibição instantânea sem depender de re-login)
+    # 2. Atualiza a sessão imediatamente para exibição sem re-login
     user_turmas = session.get("student_turmas", [])
     if code not in user_turmas:
         user_turmas.append(code)
@@ -150,16 +173,15 @@ def select_cards():
     memory_mgr = get_memory_manager()
     tutor_obj = get_tutor()
 
-    # Conjunto para evitar turmas duplicadas
     turma_codes = set()
 
-    # 1. Pega turmas da sessão em memória (garante exibição imediata após /join-turma)
+    # Pega turmas da sessão em memória
     if "student_turmas" in session and isinstance(session["student_turmas"], list):
         turma_codes.update(session["student_turmas"])
     if session.get("turma_code"):
         turma_codes.add(session["turma_code"])
 
-    # 2. Consulta no Supabase para garantir sincronia com o banco de dados
+    # Consulta no Supabase para sincronia
     try:
         res = memory_mgr.supabase.table("student_turmas")\
             .select("turma_code")\
@@ -169,7 +191,6 @@ def select_cards():
         db_codes = [t["turma_code"] for t in (res.data or []) if t.get("turma_code")]
         turma_codes.update(db_codes)
 
-        # Atualiza a sessão com a lista unificada
         session["student_turmas"] = list(turma_codes)
         session.modified = True
     except Exception as e:
@@ -177,7 +198,6 @@ def select_cards():
 
     classes = []
 
-    # 3. Para cada código de turma, recupera os cards de aula associados
     for code in turma_codes:
         raw_classes = tutor_obj.memory.get_classes_by_turma_code(code)
         for c in raw_classes:
@@ -190,7 +210,6 @@ def select_cards():
                 "code": f"Sala: {code}"
             })
 
-    # Mensagens de alerta no topo da tela
     flashes = get_flashed_messages(with_categories=True)
     success_msg = next((msg for cat, msg in flashes if cat == 'success'), None)
     error_msg = next((msg for cat, msg in flashes if cat == 'error'), None)
@@ -199,6 +218,7 @@ def select_cards():
         return render_template("select_cards.html", classes=classes, success_msg=success_msg, error_msg=error_msg)
     except Exception:
         return render_template("select-cards.html", classes=classes, success_msg=success_msg, error_msg=error_msg)
+
 
 @app.route("/brainstorm/<class_id>")
 def brainstorm_page(class_id):
@@ -323,7 +343,9 @@ def teacher_required(f):
     return decorated_function
 
 
-# --- ROTAS DO PROFESSOR ---
+# ==========================================================
+# 👨‍🏫 ROTAS DO PROFESSOR (PAINEL E CONTEÚDOS)
+# ==========================================================
 
 @app.route("/teacher/dashboard")
 @teacher_required
@@ -369,7 +391,8 @@ def view_turma(turma_code):
         teacher_id=teacher_id,
         turma=data["turma"],
         students=data["students"],
-        classes=data["classes"]
+        classes=data["classes"],
+        preview_data=None
     )
 
 
@@ -382,7 +405,7 @@ def add_turma_content(turma_code):
     description = request.form.get("description", "").strip()
     topics_raw = request.form.get("topics", "").strip()
 
-    topics = [t.strip() for t in topics_raw.split(",") if t.strip()]
+    topics = parse_topics(topics_raw)
 
     if title and turma_id:
         get_tutor().memory.add_turma_class_content(teacher_id, turma_id, title, description, topics)
@@ -394,18 +417,24 @@ def add_turma_content(turma_code):
 @app.route("/teacher/turma/<turma_code>/preview-content", methods=["POST"])
 @teacher_required
 def preview_turma_content(turma_code):
-    print("\n--- [DEBUG] INICIANDO PROCESSAMENTO DE AULA ---")
+    print("\n--- [DEBUG] INICIANDO PROCESSAMENTO DE AULA VIA IA ---")
     teacher_id = session["user_id"]
+    memory_mgr = get_memory_manager()
+    data = memory_mgr.get_turma_details(turma_code, teacher_id)
+
+    if not data:
+        return redirect(url_for("teacher_dashboard"))
+
     turma_id = request.form.get("turma_id")
     description = request.form.get("description", "").strip()
     pdf_file = request.files.get("pdf_file")
 
     pdf_proc = get_pdf_processor()
     extracted_text = ""
+
     if pdf_file and pdf_file.filename and pdf_file.filename.lower().endswith(".pdf"):
-        print(f"[DEBUG] Arquivo PDF detectado: {pdf_file.filename}")
+        print(f"[DEBUG] Extraindo texto do PDF: {pdf_file.filename}")
         extracted_text = pdf_proc.extract_text_from_pdf(pdf_file)
-        print(f"[DEBUG] Caracteres extraídos do PDF: {len(extracted_text)}")
 
     text_to_process = extracted_text or description
 
@@ -416,15 +445,29 @@ def preview_turma_content(turma_code):
     try:
         ai_result = pdf_proc.extract_concepts_with_llm(text_to_process)
         
+        # Junta os tópicos com ponto e vírgula (;) para exibição limpa no formulário de revisão
+        raw_topics = ai_result.get("topics", [])
+        topics_formatted = " ; ".join(raw_topics) if isinstance(raw_topics, list) else str(raw_topics)
+
+        preview_data = {
+            "turma_id": turma_id,
+            "suggested_title": ai_result.get("title", ""),
+            "suggested_description": ai_result.get("description", ""),
+            "suggested_topics": topics_formatted
+        }
+
+        # Re-renderiza a mesma página para disparar o modal de revisão
         return render_template(
-            "teacher_review.html",
-            turma_code=turma_code,
-            turma_id=turma_id,
-            suggested_title=ai_result.get("title", ""),
-            suggested_description=ai_result.get("description", ""),
-            suggested_topics=", ".join(ai_result.get("topics", []))
+            "teacher_turma.html",
+            teacher_id=teacher_id,
+            turma=data["turma"],
+            students=data["students"],
+            classes=data["classes"],
+            preview_data=preview_data
         )
+
     except Exception as e:
+        print(f"🚨 ERRO AO PROCESSAR COM IA: {e}")
         flash(f"Erro ao processar conteúdo com IA: {e}", "error")
         return redirect(url_for("view_turma", turma_code=turma_code))
 
@@ -438,13 +481,68 @@ def save_turma_content(turma_code):
     description = request.form.get("description", "").strip()
     topics_raw = request.form.get("topics", "").strip()
 
-    topics = [t.strip() for t in topics_raw.split(",") if t.strip()]
+    topics = parse_topics(topics_raw)
 
     if title and turma_id:
         get_tutor().memory.add_turma_class_content(teacher_id, turma_id, title, description, topics)
-        flash("Aula aprovada e gravada com sucesso!", "success")
+        flash("Aula gravada e adicionada à turma com sucesso!", "success")
 
     return redirect(url_for("view_turma", turma_code=turma_code))
+
+
+@app.route("/teacher/turma/<turma_code>/class/<class_id>/delete", methods=["POST"])
+@teacher_required
+def delete_turma_class(turma_code, class_id):
+    memory_mgr = get_memory_manager()
+    try:
+        memory_mgr.supabase.table("teacher_classes").delete().eq("id", class_id).execute()
+        flash("Aula removida com sucesso!", "success")
+    except Exception as e:
+        print(f"Erro ao excluir aula: {e}")
+        flash("Erro ao excluir a aula.", "error")
+        
+    return redirect(url_for("view_turma", turma_code=turma_code))
+
+
+@app.route("/teacher/turma/<turma_code>/class/<class_id>/edit", methods=["POST"])
+@teacher_required
+def edit_turma_class(turma_code, class_id):
+    title = request.form.get("title", "").strip()
+    description = request.form.get("description", "").strip()
+    topics_raw = request.form.get("topics", "").strip()
+
+    topics = parse_topics(topics_raw)
+
+    memory_mgr = get_memory_manager()
+    try:
+        memory_mgr.supabase.table("teacher_classes").update({
+            "title": title,
+            "description": description,
+            "topics": topics
+        }).eq("id", class_id).execute()
+        
+        flash("Aula atualizada com sucesso!", "success")
+    except Exception as e:
+        print(f"Erro ao atualizar aula: {e}")
+        flash("Erro ao atualizar a aula.", "error")
+
+    return redirect(url_for("view_turma", turma_code=turma_code))
+
+
+@app.route("/teacher/turma/<turma_code>/delete", methods=["POST"])
+@teacher_required
+def delete_turma(turma_code):
+    teacher_id = session["user_id"]
+    memory_mgr = get_memory_manager()
+    try:
+        memory_mgr.supabase.table("student_turmas").delete().eq("turma_code", turma_code).execute()
+        memory_mgr.supabase.table("turmas").delete().eq("code", turma_code).eq("teacher_id", teacher_id).execute()
+        flash(f"Turma {turma_code} excluída.", "success")
+    except Exception as e:
+        print(f"Erro ao excluir turma: {e}")
+        flash("Erro ao excluir a turma.", "error")
+
+    return redirect(url_for("teacher_dashboard"))
 
 
 # ==========================================================

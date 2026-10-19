@@ -20,17 +20,18 @@
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
-                    <div style="padding: 14px; margin-bottom: 24px; border-radius: 10px; background: rgba(255, 107, 107, 0.15); color: #ff6b6b; border: 1px solid rgba(255, 107, 107, 0.3); font-weight: 500;">
-                        ⚠️ {{ message }}
+                    <div style="padding: 14px; margin-bottom: 24px; border-radius: 10px; background: {% if category == 'success' %}rgba(76, 209, 55, 0.15){% else %}rgba(255, 107, 107, 0.15){% endif %}; color: {% if category == 'success' %}#4cd137{% else %}#ff6b6b{% endif %}; border: 1px solid {% if category == 'success' %}rgba(76, 209, 55, 0.3){% else %}rgba(255, 107, 107, 0.3){% endif %}; font-weight: 500;">
+                        {% if category == 'success' %}✅{% else %}⚠️{% endif %} {{ message }}
                     </div>
                 {% endfor %}
             {% endif %}
         {% endwith %}
+
         <div class="top-bar">
             <div class="page-title">
                 <h1>{{ turma.name }}</h1>
                 <p>Código da Sala: <strong style="color: var(--primary); font-size: 1.1rem;">{{ turma.code }}</strong> 
-                   <button onclick="navigator.clipboard.writeText('{{ turma.code }}'); alert('Código copiado!');" style="background:none; border:none; cursor:pointer; font-size:1rem;">📋</button>
+                   <button onclick="navigator.clipboard.writeText('{{ turma.code }}'); alert('Código copiado!');" style="background:none; border:none; cursor:pointer; font-size:1rem;" title="Copiar código">📋</button>
                 </p>
             </div>
             <button class="btn-primary" onclick="openModal('modal-content')">+ Adicionar Aula/Conteúdo</button>
@@ -77,27 +78,72 @@
 
         <div class="turmas-grid">
             {% for cls in classes %}
-            <div class="stat-card" style="display: block;">
+            <div class="stat-card" style="display: block; position: relative;">
+                
+                <!-- Ações da Aula (Editar e Excluir) -->
+                <div style="position: absolute; top: 12px; right: 12px; display: flex; gap: 8px; align-items: center;">
+                    <!-- Botão Editar -->
+                    <button type="button" onclick="openModal('modal-edit-{{ cls.id }}')" style="background: transparent; border: none; color: #a8a29e; cursor: pointer; font-size: 1.1rem;" title="Editar aula">✏️</button>
+                    
+                    <!-- Botão Excluir -->
+                    <form action="{{ url_for('delete_turma_class', turma_code=turma.code, class_id=cls.id) }}" method="POST" style="margin:0;" onsubmit="return confirm('Deseja realmente remover esta aula?');">
+                        <button type="submit" style="background: transparent; border: none; color: #ff6b6b; cursor: pointer; font-size: 1.1rem;" title="Excluir aula">🗑️</button>
+                    </form>
+                </div>
+
                 <h3>{{ cls.title }}</h3>
-                <p style="color: var(--text-muted); font-size: 0.85rem; margin: 8px 0;">{{ cls.description }}</p>
+                <p style="color: var(--text-muted); font-size: 0.85rem; margin: 8px 0; padding-right: 60px;">{{ cls.description }}</p>
                 <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px;">
                     {% for topic in cls.topics %}
                         <span class="turma-code-badge" style="background: rgba(255,255,255,0.05); color: #FFF;">#{{ topic }}</span>
                     {% endfor %}
                 </div>
             </div>
+
+            <!-- MODAL DE EDIÇÃO INDIVIDUAL DA AULA -->
+            <div class="modal-overlay" id="modal-edit-{{ cls.id }}">
+                <div class="modal-card" style="max-width: 600px;">
+                    <h2>✏️ Editar Aula</h2>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px;">
+                        Altere as informações da aula abaixo. Separe os tópicos com <strong>ponto e vírgula (;)</strong>.
+                    </p>
+
+                    <form action="{{ url_for('edit_turma_class', turma_code=turma.code, class_id=cls.id) }}" method="POST">
+                        <div class="input-group">
+                            <label>Título da Aula</label>
+                            <input type="text" name="title" value="{{ cls.title }}" required style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.3); color: #fff;">
+                        </div>
+
+                        <div class="input-group" style="margin-top: 14px;">
+                            <label>Descrição do Módulo</label>
+                            <textarea name="description" rows="3" required style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.3); color: #fff;">{{ cls.description }}</textarea>
+                        </div>
+
+                        <div class="input-group" style="margin-top: 14px;">
+                            <label>Tópicos Principais <small style="color: #a8a29e;">(separe com ponto e vírgula ;)</small></label>
+                            <textarea name="topics" rows="3" required style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.3); color: #fff;">{{ cls.topics|join(' ; ') if cls.topics is sequence and cls.topics is not string else cls.topics }}</textarea>
+                        </div>
+
+                        <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                            <button type="button" class="btn-primary" style="background: transparent; color: var(--text-muted);" onclick="closeModal('modal-edit-{{ cls.id }}')">Cancelar</button>
+                            <button type="submit" class="btn-primary" style="background: #6366f1; color: #fff;">Salvar Alterações 💾</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
             {% else %}
             <p style="color: var(--text-muted);">Nenhum conteúdo específico adicionado para esta sala.</p>
             {% endfor %}
         </div>
     </main>
 
-    <!-- Modal Adicionar Conteúdo -->
+    <!-- MODAL 1: ANALISAR MATERIAL COM IA -->
     <div class="modal-overlay" id="modal-content">
         <div class="modal-card">
             <h2>Gerar Conteúdo com IA</h2>
             <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px;">
-                Envie um PDF ou cole o texto do material. A IA irá analisar e gerar uma prévia para sua aprovação.
+                Envie um PDF ou cole o texto do material. A IA irá analisar os tópicos pedagógicos em segundo plano.
             </p>
 
             <form action="{{ url_for('preview_turma_content', turma_code=turma.code) }}" method="POST" enctype="multipart/form-data">
@@ -123,6 +169,42 @@
             </form>
         </div>
     </div>
+
+    <!-- MODAL 2: REVISAR E SALVAR AULA DEPOIS DA ANÁLISE DE IA -->
+    {% if preview_data %}
+    <div class="modal-overlay active" id="modal-review" style="display: flex;">
+        <div class="modal-card" style="max-width: 600px;">
+            <h2>🤖 Revisar Módulo Gerado pela IA</h2>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px;">
+                Ajuste os dados antes de liberar a aula para os estudantes. Separe os tópicos usando <strong>ponto e vírgula (;)</strong>.
+            </p>
+
+            <form action="{{ url_for('save_turma_content', turma_code=turma.code) }}" method="POST">
+                <input type="hidden" name="turma_id" value="{{ preview_data.turma_id }}">
+
+                <div class="input-group">
+                    <label>Título da Aula</label>
+                    <input type="text" name="title" value="{{ preview_data.suggested_title }}" required style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.3); color: #fff;">
+                </div>
+
+                <div class="input-group" style="margin-top: 14px;">
+                    <label>Descrição do Módulo</label>
+                    <textarea name="description" rows="3" required style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.3); color: #fff;">{{ preview_data.suggested_description }}</textarea>
+                </div>
+
+                <div class="input-group" style="margin-top: 14px;">
+                    <label>Tópicos Principais <small style="color: #a8a29e;">(separe com ponto e vírgula ;)</small></label>
+                    <textarea name="topics" rows="3" required style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.3); color: #fff;">{{ preview_data.suggested_topics }}</textarea>
+                </div>
+
+                <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                    <a href="{{ url_for('view_turma', turma_code=turma.code) }}" class="btn-primary" style="background: transparent; color: var(--text-muted); text-decoration: none; padding: 10px 16px; display: inline-block;">Descartar</a>
+                    <button type="submit" class="btn-primary" style="background: #4cd137; color: #000;">Aprovar e Salvar Aula ✅</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
 
     <script src="{{ url_for('static', filename='js/teacher.js') }}"></script>
 </body>
