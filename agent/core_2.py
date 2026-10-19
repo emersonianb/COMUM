@@ -21,26 +21,27 @@ class AgenticTutor:
             return "NOVO_TOPICO", None
 
         prompt = f"""
-        Você é um mini-agente tutor. Analise a mensagem do aluno e indique ao tutor principal o que fazer.
+Você é um mini-agente tutor. Analise a mensagem do aluno e indique ao tutor principal o que fazer.
 
-        Pergunta do tutor: "{last_question}"
-        Resposta do aluno: "{user_message}"
+Pergunta do tutor: "{last_question}"
+Resposta do aluno: "{user_message}"
 
-        Responda em uma linha no formato:
-        <AÇÃO> | <INSTRUÇÃO>
-        Onde <AÇÃO> é:
-          - CONTINUAR: se a resposta do aluno é referente à última pergunta
-          - NOVO_TOPICO: se é algo novo
+Responda em uma linha no formato:
+<AÇÃO> | <INSTRUÇÃO>
+Onde <AÇÃO> é:
+  - CONTINUAR: se a resposta do aluno é referente à última pergunta
+  - NOVO_TOPICO: se é algo novo
 
-        E <INSTRUÇÃO> é uma sugestão do que o tutor principal deve responder.
-        Não inclua saudações.
-        """
+E <INSTRUÇÃO> é uma sugestão do que o tutor principal deve responder.
+Não inclua saudações.
+"""
 
         result, _ = self.llm.generate(
             context="",
             message=prompt,
+            scaffolding_prompt="",
             materials_context="",
-            level="A1",
+            level="a1",
             current_module="default",
             last_topic="none",
             previous_words=[],
@@ -61,7 +62,6 @@ class AgenticTutor:
         class_info = self.memory.get_class("class_01")
         category_topics = class_info.get("topics", []) if class_info else []
 
-        # Obtém os tópicos já estudados diretamente pelo histórico de progresso do Supabase
         progress = self.memory.get_progress(user_id, "class_01")
         previous_topics = list(progress.keys())
 
@@ -76,10 +76,10 @@ class AgenticTutor:
         if not profile or "level" not in profile or "module" not in profile:
             return "Before we start, I need to know your level and module. 🙂"
 
-        # 1. Salva mensagem do usuário no Supabase
+        # 1. Salva mensagem do usuário no histórico
         self.memory.update_history(user_id, f"Aluno: {message}")
 
-        # 2. Identifica os conceitos e dúvidas marcados no Brainstorm
+        # 2. Identifica o tópico principal
         duvidas = []
         if topics_queue:
             duvidas = [t["name"] if isinstance(t, dict) else t for t in topics_queue]
@@ -104,30 +104,34 @@ class AgenticTutor:
         learning_state = self.memory.get_learning_state(user_id)
         class_progress = self.memory.get_progress(user_id, class_id)
         
-        level = learning_state.get("level") or profile.get("level", "A1")
+        raw_level = learning_state.get("level") or profile.get("level", "a1")
+        level = str(raw_level).lower().strip()
         current_module = learning_state.get("current_module") or profile.get("module", "Vocabulary")
-        last_topic = learning_state.get("last_topic", "none")
+        last_topic = learning_state.get("last_topic", topicos_foco)
 
         previous_words = [w.lower() for w in (self.memory.get_taught_words(user_id) or [])]
         previous_topics = [t.lower() for t in class_progress.keys()]
 
-        # 5. Avalia intenção via mini-agente
+        # 5. Avalia intenção do aluno via mini-agente
         action, instruction = self.interpret_student_message(
             last_question=last_topic,
             user_message=message
         )
 
-        if action != "CONTINUAR":
-            self.memory.update_learning_state(user_id, last_topic=message)
-
-        # 6. Aplica o SCAFFOLDING PEDAGÓGICO
-        # Busca quantas tentativas/erros o aluno já fez no tópico atual
-        topic_info = class_progress.get(topicos_foco, {})
+        # 6. Controle do Andaime (Scaffolding): Atualiza e contabiliza tentativas no tópico atual
+        topic_key = topicos_foco.lower()
+        topic_info = class_progress.get(topic_key, {})
         attempts = topic_info.get("attempts", 0)
 
-        # Monta os materiais de contexto e gera as regras de Andaime
-        materials_str = f"🎯 FOCO OBRIGATÓRIO DA AULA: {topicos_foco}\n"
+        if action == "CONTINUAR":
+            attempts += 1
+            self.memory.update_topic_progress(user_id, class_id, topic_key, "in_progress")
+        else:
+            attempts = 0
+            self.memory.update_learning_state(user_id, last_topic=message)
 
+        # 7. Busca materiais de apoio (RAG / Banco)
+        materials_str = f"🎯 FOCO OBRIGATÓRIO DA AULA: {topicos_foco}\n"
         if current_category:
             self.rag = GuideRAG(user_id=user_id, categoria=current_category, memory_manager=self.memory)
             rag_output = self.rag.query(message)
@@ -137,21 +141,20 @@ class AgenticTutor:
                 extra_materials = self.material_manager.get_materials_by_category(user_id, current_category)
                 materials_str += "\n" + "\n".join([f"- [{m['topic']}]: {m['content']}" for m in extra_materials])
 
-        # Gera a instrução do Andaime baseada nas tentativas do aluno
+        # 8. Gera a instrução do Scaffolding
         scaffolding_instruction = self.scaffolding.build_system_instruction(
             topic=topicos_foco, 
             attempts=attempts, 
+            student_level=level,
             context=materials_str
         )
-        
-        # Injeta as regras do andaime pedagógico no contexto dos materiais
-        full_materials_context = f"{scaffolding_instruction}\n\n--- MATERIAIS DE APOIO ---\n{materials_str}"
 
-        # 7. Gera resposta com a LLM
+        # 9. Gera a resposta enviando o scaffolding_prompt isolado ao LLMHandler
         response_text, new_word = self.llm.generate(
             context=context,
             message=instruction or message,
-            materials_context=full_materials_context,
+            scaffolding_prompt=scaffolding_instruction,
+            materials_context=materials_str,
             level=level,
             current_module=current_module,
             last_topic=last_topic,
@@ -160,7 +163,7 @@ class AgenticTutor:
             has_previous_sessions=len(context) > 1
         )
 
-        # 8. Atualiza histórico no Supabase
+        # 10. Atualiza o histórico no banco de dados
         self.memory.update_history(user_id, f"Tutor: {response_text}", role="tutor")
 
         if new_word:

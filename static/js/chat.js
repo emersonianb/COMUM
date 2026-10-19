@@ -11,7 +11,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const closePanelBtn = document.getElementById("close-panel-btn");
     const sidePanel = document.getElementById("side-panel");
     const tabBtns = document.querySelectorAll(".tab-btn");
-    const toggleAudioBtn = document.getElementById("toggle-audio-btn");
 
     // Flashcards
     const flashcardCard = document.getElementById("flashcard");
@@ -24,75 +23,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const tabGames = document.getElementById("tab-games");
 
     // Estados da Aplicação
-    let isAudioEnabled = true;
     let currentCards = [];
     let currentCardIndex = 0;
     let currentGameData = null;
 
     const currentClassId = typeof CLASS_ID !== "undefined" ? CLASS_ID : "class_01";
-
-    // --------------------------------------------------
-    // 2. RECURSOS DE ÁUDIO E SÍNTESE DE VOZ
-    // --------------------------------------------------
-    if ('speechSynthesis' in window) {
-        window.speechSynthesis.onvoiceschanged = () => {
-            window.speechSynthesis.getVoices();
-        };
-    }
-
-    function speakText(text) {
-        if (!('speechSynthesis' in window)) return;
-
-        window.speechSynthesis.cancel();
-        window.speechSynthesis.resume();
-
-        const cleanText = text
-            .replace(/[*#_~`]/g, '')
-            .replace(/\[(.*?)\]\(.*?\)/g, '$1')
-            .trim();
-
-        if (!cleanText) return;
-
-        const utterance = new SpeechSynthesisUtterance(cleanText);
-        const englishPattern = /\b(the|is|you|what|how|where|this|that|can|are|sentence|word|meaning)\b/i;
-
-        if (englishPattern.test(cleanText) && !/\b(você|que|para|como|está|aula|tópico)\b/i.test(cleanText)) {
-            utterance.lang = 'en-US';
-        } else {
-            utterance.lang = 'pt-BR';
-        }
-
-        utterance.rate = 0.95;
-
-        const voices = window.speechSynthesis.getVoices();
-        const preferredVoice = voices.find(v => v.lang.startsWith(utterance.lang) && v.localService);
-        if (preferredVoice) {
-            utterance.voice = preferredVoice;
-        }
-
-        window.speechSynthesis.speak(utterance);
-    }
-
-    if (toggleAudioBtn) {
-        toggleAudioBtn.addEventListener("click", () => {
-            isAudioEnabled = !isAudioEnabled;
-            toggleAudioBtn.innerText = isAudioEnabled ? "🔊 Áudio: ON" : "🔇 Áudio: OFF";
-            toggleAudioBtn.classList.toggle("disabled", !isAudioEnabled);
-            if (!isAudioEnabled && 'speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
-            }
-        });
-    }
-
-    chatMessages.addEventListener("click", (e) => {
-        const speakBtn = e.target.closest(".btn-speak-msg");
-        if (speakBtn) {
-            const bubbleContent = speakBtn.parentElement.querySelector(".bubble-content");
-            if (bubbleContent) {
-                speakText(bubbleContent.innerText);
-            }
-        }
-    });
 
     // --------------------------------------------------
     // 3. CHAT E ENVIO DE MENSAGENS
@@ -122,9 +57,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 if (res.ok && data.response) {
                     addMessage(data.response, "tutor");
-                    if (isAudioEnabled) {
-                        speakText(data.response);
-                    }
                 } else {
                     addMessage(data.message || "Não consegui obter a resposta no momento.", "tutor");
                 }
