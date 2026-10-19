@@ -18,3 +18,4 @@ data/
 *.pyc
 listar.py
 migrate.py
+.gitignore
