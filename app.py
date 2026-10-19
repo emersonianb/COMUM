@@ -1,7 +1,7 @@
 import os
 import urllib.parse
 from functools import wraps
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session, flash
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session, flash, get_flashed_messages
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -81,8 +81,18 @@ def login():
         memory_mgr._ensure_user(username, role="student")
         session['user_id'] = username
         session['role'] = 'student'
-        return redirect('/select-cards')
 
+        # Puxa do Supabase as turmas que o aluno já pertence
+        try:
+            res = memory_mgr.supabase.table("student_turmas")\
+                .select("turma_code")\
+                .eq("student_id", username)\
+                .execute()
+            session['student_turmas'] = [t["turma_code"] for t in (res.data or []) if t.get("turma_code")]
+        except Exception:
+            session['student_turmas'] = []
+
+        return redirect('/select-cards')
 
 @app.route("/logout")
 def logout():
@@ -93,48 +103,102 @@ def logout():
 @app.route('/join-turma', methods=['POST'])
 def join_turma():
     user_id = session.get('user_id')
-    turma_code = request.form.get('turma_code')
+    turma_code = (request.form.get('turma_code') or '').strip().upper()
 
     if not user_id:
         return redirect('/login')
 
     memory_mgr = get_memory_manager()
     turma = memory_mgr.validate_turma(turma_code)
+    
     if not turma:
-        return render_template('select-cards.html', error_msg="Código de sala inválido. Verifique com seu professor.")
+        flash("Código de sala inválido. Verifique com seu professor.", "error")
+        return redirect('/select-cards')
 
-    memory_mgr.supabase.table("student_turmas").upsert(
-        {"student_id": user_id, "turma_code": turma["code"]},
-        on_conflict="student_id, turma_code"
-    ).execute()
+    code = turma.get("code", turma_code).upper()
 
+    # 1. Salva no Supabase
+    try:
+        memory_mgr.supabase.table("student_turmas").upsert(
+            {"student_id": user_id, "turma_code": code},
+            on_conflict="student_id, turma_code"
+        ).execute()
+    except Exception as e:
+        print(f"🚨 Erro ao salvar student_turmas no Supabase: {e}")
+
+    # 2. ATUALIZA A SESSÃO IMEDIATAMENTE (Exibição instantânea sem depender de re-login)
+    user_turmas = session.get("student_turmas", [])
+    if code not in user_turmas:
+        user_turmas.append(code)
+    
+    session["student_turmas"] = user_turmas
+    session['turma_code'] = code
+    session.modified = True  # Força o Flask a gravar o cookie imediatamente
+
+    flash(f"Você entrou na sala '{turma.get('name', code)}' com sucesso!", "success")
     return redirect('/select-cards')
 
 
 @app.route("/select-cards")
 def select_cards():
-    """3. Tela de seleção de aulas/cards consultando o Supabase pelo código da sala do aluno."""
+    """3. Tela de seleção de aulas: busca e exibe TODAS as turmas do aluno em tempo real."""
     user_id = session.get("user_id")
-    turma_code = session.get("turma_code")
 
     if not user_id or session.get("role") != "student":
         return redirect(url_for("login"))
 
-    raw_classes = get_tutor().memory.get_classes_by_turma_code(turma_code)
+    memory_mgr = get_memory_manager()
+    tutor_obj = get_tutor()
+
+    # Conjunto para evitar turmas duplicadas
+    turma_codes = set()
+
+    # 1. Pega turmas da sessão em memória (garante exibição imediata após /join-turma)
+    if "student_turmas" in session and isinstance(session["student_turmas"], list):
+        turma_codes.update(session["student_turmas"])
+    if session.get("turma_code"):
+        turma_codes.add(session["turma_code"])
+
+    # 2. Consulta no Supabase para garantir sincronia com o banco de dados
+    try:
+        res = memory_mgr.supabase.table("student_turmas")\
+            .select("turma_code")\
+            .eq("student_id", user_id)\
+            .execute()
+        
+        db_codes = [t["turma_code"] for t in (res.data or []) if t.get("turma_code")]
+        turma_codes.update(db_codes)
+
+        # Atualiza a sessão com a lista unificada
+        session["student_turmas"] = list(turma_codes)
+        session.modified = True
+    except Exception as e:
+        print(f"🚨 Erro ao consultar turmas no Supabase: {e}")
+
     classes = []
 
-    for c in raw_classes:
-        classes.append({
-            "id": c.get("id"),
-            "class_id": c.get("id"),
-            "title": c.get("title", "Aula sem Título"),
-            "description": c.get("description", "Acesse para iniciar o diagnóstico e o chat."),
-            "topics": c.get("topics", []),
-            "code": f"Sala: {turma_code}"
-        })
+    # 3. Para cada código de turma, recupera os cards de aula associados
+    for code in turma_codes:
+        raw_classes = tutor_obj.memory.get_classes_by_turma_code(code)
+        for c in raw_classes:
+            classes.append({
+                "id": c.get("id"),
+                "class_id": c.get("id"),
+                "title": c.get("title", "Aula sem Título"),
+                "description": c.get("description", "Acesse para iniciar o diagnóstico e o chat."),
+                "topics": c.get("topics", []),
+                "code": f"Sala: {code}"
+            })
 
-    return render_template("select_cards.html", classes=classes, turma_code=turma_code)
+    # Mensagens de alerta no topo da tela
+    flashes = get_flashed_messages(with_categories=True)
+    success_msg = next((msg for cat, msg in flashes if cat == 'success'), None)
+    error_msg = next((msg for cat, msg in flashes if cat == 'error'), None)
 
+    try:
+        return render_template("select_cards.html", classes=classes, success_msg=success_msg, error_msg=error_msg)
+    except Exception:
+        return render_template("select-cards.html", classes=classes, success_msg=success_msg, error_msg=error_msg)
 
 @app.route("/brainstorm/<class_id>")
 def brainstorm_page(class_id):
