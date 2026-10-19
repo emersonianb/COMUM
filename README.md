@@ -33,8 +33,7 @@ O objetivo do projeto é oferecer uma experiência adaptativa, empática e pedag
 * 🧱 **Scaffolding Pedagógico Dinâmico (`ScaffoldingAgent`):** Regulação da Zona de Desenvolvimento Proximal (ZDP) de Vygotsky. O tutor evita o descarregamento cognitivo automatizado, alternando progressivamente entre dicas socráticas (Nível 1), explicações com regras (Nível 2) e modelos resolvidos (Nível 3).
 * ⚡ **Inferência de Baixa Latência via Groq LPU:** Processamento de linguagem natural acelerado por unidades LPU (*Large Processing Units*), permitindo trocas de mensagens e respostas pedagógicas em menos de 1,5 segundo.
 * 🔍 **RAG Ancorado no Supabase (`pgvector`):** Recuperação vetorial de materiais didáticos (gramática, vocabulário, expressões e pronúncia) por similaridade de cosseno, garantindo respostas livres de alucinações.
-* 🎭 **Análise Emocional e Adaptação Sentimental:** Detecção contínua do estado emocional e nível de engajamento do aluno para ajuste do tom de voz do tutor.
-* 🧠 **Memória Perceptiva e Gestão CEFR:** Acompanhamento de perfis de alunos, nível de proficiência (A1 a C2), turmas e vocabulário aprendido (`taught_words`).
+* 🧠 **Memória Perceptiva:** Acompanhamento de perfis de alunos, nível de proficiência (A1 a C2), turmas e vocabulário aprendido (`taught_words`).
 * 💡 **Módulo de Brainstorming para Docentes:** Ferramenta para extração de tópicos e auxílio na preparação de aulas e conteúdos pedagógicos.
 * 🌐 **Interface Web Moderna:** Aplicação web responsiva com comunicação via API REST/WebSockets integrada ao backend Python.
 
