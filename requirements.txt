@@ -4,17 +4,19 @@ gunicorn>=21.2.0
 python-dotenv>=1.0.0
 requests>=2.31.0
 
-# IA & LLM (Groq & LangChain)
+# IA & LLM (Groq, LangChain & HuggingFace)
 groq>=0.10.0
 langchain>=0.1.0
 langchain-core>=0.1.0
 langchain-community>=0.0.10
 langchain-groq>=0.1.0
+langchain-huggingface>=0.0.1
 sentence-transformers>=2.2.0
 
-# Banco de Dados & RAG (Supabase & PDF)
+# Banco de Dados, RAG & PDFs
 supabase>=2.3.0
 pymupdf>=1.23.0
+pypdf>=4.0.0
 
 # Processamento de Dados
 numpy>=1.24.0
