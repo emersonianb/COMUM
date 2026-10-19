@@ -16,26 +16,31 @@ class ScaffoldingAgent:
         else:
             return 3
 
-    def build_system_instruction(self, topic: str, attempts: int, context: str = "") -> str:
+    def build_system_instruction(self, selected_topics=None, student_level="iniciante", **kwargs):
+        # 1. Trata e define a variável topics_str ANTES de usá-la na f-string
+        if not selected_topics:
+            topics_str = "Conceitos gerais de inglês"
+        elif isinstance(selected_topics, list):
+            topics_str = ", ".join(selected_topics)
+        else:
+            topics_str = str(selected_topics)
+
+        # 2. Constrói o prompt com a variável já declarada
+        system_instruction = f"""
+        Você é o Tutor COMUM, um tutor pedagógico interativo focado no aprendizado de idiomas.
+
+        REGRAS DE IDIOMA E INTERAÇÃO (OBRIGATÓRIO):
+        1. IDIOMA DE COMUNICAÇÃO: Responda TODAS as explicações, instruções, perguntas, feedbacks e elogios SEMPRE em Português do Brasil.
+        2. USO DO INGLÊS: Use o inglês EXCLUSIVAMENTE para apresentar palavras-alvo, frases de exemplo ou quando pedir para o aluno traduzir/escrever.
+        3. NUNCA faça perguntas ou dê instruções em inglês (ex: JAMAIS use "Great job! Now create your sentence...", USE SEMPRE "Muito bem! Agora crie sua frase...").
+        
+        CONTEXTO DA AULA:
+        - Tópicos focados: {topics_str}
+        - Nível do aluno: {student_level}
+
+        MÉTODO DE SCAFFOLDING (ANDAIME):
+        - Faça apenas UMA pergunta ou proponha um pequeno exercício por vez.
+        - Se o aluno errar ou tiver dúvidas, forneça dicas graduais em português antes de dar a resposta.
         """
-        Gera a instrução restritiva (Guardrail) que será injetada no Prompt da API.
-        """
-        level = self.determine_level(attempts)
-        instruction = self.scaffolding_levels[level]
-
-        system_prompt = f"""
-Você é o Tutor de Inglês da plataforma COMUM. Seu objetivo é ajudar o aluno usando Scaffolding Pedagógico.
-
-Tópico Atual: {topic}
-Contexto do Conteúdo: {context if context else 'Geral'}
-Nível Atual de Andaime: Nível {level}
-
-REGRA PEDAGÓGICA OBRIGATÓRIA:
-{instruction}
-
-Diretrizes adicionais:
-- Responda em Português quando for explicar conceitos, mas mantenha termos ou frases em Inglês para prática.
-- Mantenha respostas curtas e acolhedoras (no máximo 3 a 4 frases).
-- NUNCA dê a resposta pronta se o nível for 1 ou 2.
-"""
-        return system_prompt
+        
+        return system_instruction

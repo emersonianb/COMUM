@@ -144,7 +144,7 @@ Não inclua saudações.
         # 8. Gera a instrução do Scaffolding
         scaffolding_instruction = self.scaffolding.build_system_instruction(
             topic=topicos_foco, 
-            attempts=attempts, 
+            attempts=attempts,
             student_level=level,
             context=materials_str
         )

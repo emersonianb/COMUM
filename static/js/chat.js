@@ -30,27 +30,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const currentClassId = typeof CLASS_ID !== "undefined" ? CLASS_ID : "class_01";
 
-    // --------------------------------------------------
-    // 2. REPRODUÇÃO DE ÁUDIO (TEXT-TO-SPEECH)
-    // --------------------------------------------------
-    function speakText(text) {
-        if (!('speechSynthesis' in window)) {
-            alert("Seu navegador não suporta a síntese de voz.");
-            return;
-        }
-
-        window.speechSynthesis.cancel(); // Para qualquer áudio em execução
-
-        // Remove tags HTML/Markdown simples do texto antes de falar
-        const cleanText = text.replace(/<[^>]*>?/gm, '').replace(/[\*\_~`#]/g, '');
-        const utterance = new SpeechSynthesisUtterance(cleanText);
-        
-        // Define o idioma preferencial (pode ser ajustado para 'en-US' se as respostas forem em inglês)
-        utterance.lang = "pt-BR";
-        utterance.rate = 0.95; // Velocidade da fala
-        
-        window.speechSynthesis.speak(utterance);
-    }
 
     // --------------------------------------------------
     // 3. CHAT E ENVIO DE MENSAGENS
@@ -107,20 +86,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         bubble.appendChild(contentDiv);
-
-        if (sender === "tutor") {
-            const speakBtn = document.createElement("button");
-            speakBtn.className = "btn-speak-msg";
-            speakBtn.title = "Ouvir resposta";
-            speakBtn.innerText = "🔊";
-            
-            // Evento de clique no botão de voz
-            speakBtn.addEventListener("click", () => {
-                speakText(text);
-            });
-
-            bubble.appendChild(speakBtn);
-        }
 
         wrapper.appendChild(bubble);
         chatMessages.appendChild(wrapper);
@@ -199,9 +164,6 @@ document.addEventListener("DOMContentLoaded", () => {
         if (card && cardFront && cardBack) {
             cardFront.innerHTML = `
                 <p style="font-size: 1.1rem; font-weight: 600;">${card.front}</p>
-                <small style="color: #fc9e4f; display:block; margin-top:12px; font-weight: 500;">
-                    💡 Dica: ${card.hint || 'Clique para virar'}
-                </small>
             `;
             cardBack.innerHTML = `<p style="font-size: 1.05rem; font-weight: 500;">${card.back}</p>`;
         }
