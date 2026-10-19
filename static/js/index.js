@@ -28,7 +28,7 @@ class Square {
         this.x += (this.targetX - this.x) * this.ease;
         this.y += (this.targetY - this.y) * this.ease;
 
-        if (mouseX && mouseY) {
+        if (mouseX !== null && mouseY !== null) {
             let dx = mouseX - this.x;
             let dy = mouseY - this.y;
             let dist = Math.sqrt(dx * dx + dy * dy);
@@ -59,7 +59,7 @@ mapImage.src = "https://upload.wikimedia.org/wikipedia/commons/8/80/World_map_-_
 
 mapImage.onload = () => {
     generateMapPoints();
-    resize();
+    resize(true);
 };
 
 function generateMapPoints() {
@@ -92,16 +92,22 @@ function generateMapPoints() {
     initSquares();
 }
 
-function resize() {
-    width = canvas.width = window.innerWidth;
-    height = canvas.height = window.innerHeight;
+function resize(forceReset = false) {
+    const newWidth = window.innerWidth;
+    const newHeight = window.innerHeight;
+
+    // Evita recarregar se a mudança for só o aparecimento/desaparecimento da barra do navegador no celular
+    if (!forceReset && newWidth === width && Math.abs(newHeight - height) < 120) {
+        return;
+    }
+
+    width = canvas.width = newWidth;
+    height = canvas.height = newHeight;
     initSquares();
 }
 
 function initSquares() {
     if (worldMapPoints.length === 0) return;
-    
-    squares = [];
     
     const renderWidth = Math.min(width * 0.85, 1200);
     const renderHeight = renderWidth / 2;
@@ -109,25 +115,49 @@ function initSquares() {
     const startX = (width - renderWidth) / 2;
     const startY = (height - renderHeight) / 2 - 20;
 
-    worldMapPoints.forEach(point => {
+    const isAlreadyCreated = squares.length === worldMapPoints.length;
+
+    worldMapPoints.forEach((point, i) => {
         let targetX = startX + point.relX * renderWidth;
         let targetY = startY + point.relY * renderHeight;
         
         targetX += (Math.random() * 8 - 4);
         targetY += (Math.random() * 8 - 4);
 
-        squares.push(new Square(targetX, targetY));
+        if (isAlreadyCreated) {
+            // Atualiza suavemente as coordenadas alvo sem destruir os objetos
+            squares[i].targetX = targetX;
+            squares[i].targetY = targetY;
+        } else {
+            squares.push(new Square(targetX, targetY));
+        }
     });
 }
 
 let mouse = { x: null, y: null };
 
+// Suporte para Mouse
 window.addEventListener('mousemove', (e) => {
     mouse.x = e.clientX;
     mouse.y = e.clientY;
 });
 
 window.addEventListener('mouseleave', () => {
+    mouse.x = null;
+    mouse.y = null;
+});
+
+// Suporte para Telas Touch (Celulares/Tablets)
+function handleTouch(e) {
+    if (e.touches && e.touches.length > 0) {
+        mouse.x = e.touches[0].clientX;
+        mouse.y = e.touches[0].clientY;
+    }
+}
+
+window.addEventListener('touchstart', handleTouch, { passive: true });
+window.addEventListener('touchmove', handleTouch, { passive: true });
+window.addEventListener('touchend', () => {
     mouse.x = null;
     mouse.y = null;
 });
@@ -143,10 +173,10 @@ function animate() {
     requestAnimationFrame(animate);
 }
 
-window.addEventListener('resize', resize);
+window.addEventListener('resize', () => resize(false));
 animate();
 
-// 🌍 ANIMAÇÃO DO TÍTULO MULTILINGUE (Apenas no carregamento da página)
+// 🌍 ANIMAÇÃO DO TÍTULO MULTILINGUE
 document.addEventListener('DOMContentLoaded', () => {
     const titleElement = document.querySelector('.hero-content h1');
     if (!titleElement) return;
@@ -173,12 +203,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentIndex++;
                 
                 if (currentIndex < languages.length) {
-                    setTimeout(changeLanguage, 250); // Velocidade do ciclo
+                    setTimeout(changeLanguage, 250);
                 }
             }, 80);
         }
     };
 
-    // Executa apenas uma vez ao carregar a página
     changeLanguage();
 });

@@ -38,27 +38,27 @@ class MemoryManager:
         return mapa_niveis.get(clean, clean)
 
     @staticmethod
-    def _format_topics_to_str(topics) -> str:
-        """Converte lista ou string de tópicos em string separada por ';'."""
-        if isinstance(topics, list):
-            return ";".join([str(t).strip() for t in topics if str(t).strip()])
-        elif isinstance(topics, str):
-            return ";".join([t.strip() for t in topics.split(";") if t.strip()])
-        return ""
-
-    @staticmethod
-    def _parse_topics_to_list(topics_raw) -> list:
-        """Lê a string separada por ';' e converte em lista Python."""
-        if isinstance(topics_raw, str):
-            return [t.strip() for t in topics_raw.split(";") if t.strip()]
-        elif isinstance(topics_raw, list):
-            return topics_raw
+    def _parse_topics(topics) -> list:
+        """
+        Converte strings com ';' ou listas em uma lista limpa de tópicos em Python.
+        Garante compatibilidade com colunas do tipo text[] no Supabase/PostgreSQL.
+        """
+        if isinstance(topics, str):
+            return [t.strip() for t in topics.split(";") if t.strip()]
+        elif isinstance(topics, list):
+            result = []
+            for item in topics:
+                if isinstance(item, str) and ";" in item:
+                    result.extend([t.strip() for t in item.split(";") if t.strip()])
+                elif str(item).strip():
+                    result.append(str(item).strip())
+            return result
         return []
 
     def _ensure_user(self, user_id: str, role: str = "student"):
         """Garante que o usuário e seu perfil existam no banco."""
         if not user_id or not str(user_id).strip():
-            return  # Trava de segurança: impede inserção de ID nulo
+            return
             
         user_id = str(user_id).strip().lower()
 
@@ -70,7 +70,7 @@ class MemoryManager:
                 "role": role
             }).execute()
 
-            # 2. Cria na tabela correspondente ao perfil
+            # 2. Cria na tabela correspondente ao perfil com nível padronizado
             if role == "student":
                 self.supabase.table("students").insert({
                     "user_id": user_id,
@@ -183,7 +183,7 @@ class MemoryManager:
             "class_id": c["id"],
             "title": c.get("title"),
             "description": c.get("description"),
-            "topics": self._parse_topics_to_list(c.get("topics"))
+            "topics": self._parse_topics(c.get("topics"))
         }
 
     def get_progress(self, user_id: str, class_id: str = None):
@@ -479,7 +479,7 @@ class MemoryManager:
         
         classes = classes_res.data or []
         for c in classes:
-            c["topics"] = self._parse_topics_to_list(c.get("topics"))
+            c["topics"] = self._parse_topics(c.get("topics"))
 
         return {
             "turma": turma,
@@ -488,9 +488,9 @@ class MemoryManager:
         }
 
     def add_turma_class_content(self, teacher_id: str, turma_id: str, title: str, description: str, topics) -> dict:
-        """Cadastra uma nova aula/conteúdo salvando os tópicos formatados por ';'."""
+        """Cadastra uma nova aula/conteúdo garantindo o envio de lista de tópicos para colunas text[]."""
         class_id = f"class_{self.generate_turma_code(8).lower()}"
-        formatted_topics = self._format_topics_to_str(topics)
+        topics_list = self._parse_topics(topics)
         
         res = self.supabase.table("teacher_classes").insert({
             "id": class_id,
@@ -498,7 +498,7 @@ class MemoryManager:
             "turma_id": turma_id,
             "title": title,
             "description": description,
-            "topics": formatted_topics
+            "topics": topics_list
         }).execute()
         
         return res.data[0] if res.data else None
@@ -516,7 +516,7 @@ class MemoryManager:
         classes = classes_res.data or []
         
         for c in classes:
-            c["topics"] = self._parse_topics_to_list(c.get("topics"))
+            c["topics"] = self._parse_topics(c.get("topics"))
             
         return classes
 
@@ -525,5 +525,5 @@ class MemoryManager:
         if not res.data:
             return None
         c = res.data[0]
-        c["topics"] = self._parse_topics_to_list(c.get("topics"))
+        c["topics"] = self._parse_topics(c.get("topics"))
         return c

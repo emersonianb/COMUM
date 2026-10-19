@@ -1,11 +1,13 @@
 import json
 import os
+import re
 from datetime import datetime
 from pathlib import Path
 import pymupdf as fitz
 from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage
-from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
+from langchain_huggingface import HuggingFaceEndpointEmbeddings
+
 
 class MaterialFormatter:
     def __init__(self, model="openai/gpt-oss-120b"):
@@ -17,39 +19,45 @@ class MaterialFormatter:
 
     def format(self, raw_text):
         prompt = f"""
-        Você é um formatador de conteúdo. Extraia do texto abaixo:
+Você é um formatador de conteúdo. Extraia do texto abaixo:
 
-        - "tema": uma frase curta explicando o tema.
-        - "conteudo": o conteúdo puro.
+- "tema": uma frase curta explicando o tema.
+- "conteudo": o conteúdo puro.
 
-        Retorne SOMENTE um JSON válido:
-        {{
-        "tema": "...",
-        "conteudo": "..."
-        }}
+Retorne SOMENTE um JSON válido sem marcações markdown adicionais:
+{{
+  "tema": "...",
+  "conteudo": "..."
+}}
 
-        Texto:
-        {raw_text}
-        """
+Texto:
+{raw_text}
+"""
         response = self.llm.invoke([HumanMessage(content=prompt)])
         content = response.content.strip()
 
+        # Remove formatação markdown de código json (```json ... ```) se presente
+        content_clean = re.sub(r"^```json\s*|^```\s*|\s*```$", "", content, flags=re.MULTILINE).strip()
+
         try:
-            return json.loads(content)
+            return json.loads(content_clean)
         except Exception:
-            start = content.find("{")
-            end = content.rfind("}") + 1
-            return json.loads(content[start:end])
+            try:
+                start = content.find("{")
+                end = content.rfind("}") + 1
+                return json.loads(content[start:end])
+            except Exception:
+                return {"tema": "Geral", "conteudo": raw_text}
 
 
 class MaterialManager:
     def __init__(self, memory_manager, formatter=None):
         self.memory_manager = memory_manager
         self.formatter = formatter
-        # Modelo para geração dos vetores para o Supabase (pgvector)
-        self.embeddings = HuggingFaceInferenceAPIEmbeddings(
-        api_key=os.getenv("HUGGINGFACEHUB_API_TOKEN"),
-        model_name="sentence-transformers/all-MiniLM-L6-v2"
+        # Modelo atualizado conforme as diretrizes do LangChain
+        self.embeddings = HuggingFaceEndpointEmbeddings(
+            model="sentence-transformers/all-MiniLM-L6-v2",
+            huggingfacehub_api_token=os.getenv("HUGGINGFACEHUB_API_TOKEN")
         )
 
     def _extract_text_from_file(self, file_path):
