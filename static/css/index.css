@@ -222,3 +222,18 @@ body {
     .cta-group { flex-direction: column; width: 100%; }
     .btn-primary, .btn-secondary { width: 100%; text-align: center; }
 }
+
+#world-map-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 0;
+    pointer-events: none; /* Permite clicar nos botões da página através do mapa */
+}
+
+.hero-content {
+    position: relative;
+    z-index: 10; /* Mantém os textos e botões na frente do mapa */
+}
