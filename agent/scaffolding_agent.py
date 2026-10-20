@@ -16,8 +16,8 @@ class ScaffoldingAgent:
         else:
             return 3
 
-    def build_system_instruction(self, selected_topics=None, student_level="iniciante", **kwargs):
-        # 1. Trata e define a variável topics_str ANTES de usá-la na f-string
+    def build_system_instruction(self, selected_topics=None, student_level="iniciante", attempts=0, **kwargs):
+        # 1. Trata e define a variável topics_str
         if not selected_topics:
             topics_str = "Conceitos gerais de inglês"
         elif isinstance(selected_topics, list):
@@ -25,7 +25,11 @@ class ScaffoldingAgent:
         else:
             topics_str = str(selected_topics)
 
-        # 2. Constrói o prompt com a variável já declarada
+        # 2. Determina o nível de scaffolding e resgata a instrução específica
+        current_level = self.determine_level(attempts)
+        scaffolding_directive = self.scaffolding_levels[current_level]
+
+        # 3. Constrói o prompt com a diretriz ativa de scaffolding
         system_instruction = f"""
         Você é o Tutor COMUM, um tutor pedagógico interativo focado no aprendizado de idiomas.
 
@@ -38,9 +42,9 @@ class ScaffoldingAgent:
         - Tópicos focados: {topics_str}
         - Nível do aluno: {student_level}
 
-        MÉTODO DE SCAFFOLDING (ANDAIME):
+        MÉTODO DE SCAFFOLDING ATIVO (NÍVEL {current_level}):
+        - DIRETRIZ DESSA RESPOSTA: {scaffolding_directive}
         - Faça apenas UMA pergunta ou proponha um pequeno exercício por vez.
-        - Se o aluno errar ou tiver dúvidas, forneça dicas graduais em português antes de dar a resposta.
         """
         
         return system_instruction
