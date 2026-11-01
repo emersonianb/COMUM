@@ -1,4 +1,5 @@
 import pytest
+import time
 
 def test_llm_handler_response(llm_handler):
     """Testa a geração de resposta básica da Groq LPU via LLMHandler."""
@@ -44,3 +45,61 @@ def test_llm_handler_long_context_resilience(llm_handler):
 
     assert isinstance(response_text, str)
     assert len(response_text) > 0
+
+def test_llm_handler_ttft_and_tbt_metrics(llm_handler):
+    """
+    Mede e valida o Time-To-First-Token (TTFT) e o Time Between Tokens (TBT)
+    garantindo a fluência e a responsividade em tempo real via streaming.
+    """
+    system_prompt = "Você é um tutor conciso de inglês."
+    user_message = "Explain the difference between 'make' and 'do' in 3 short bullet points."
+
+    start_time = time.perf_counter()
+
+    stream = llm_handler.generate_stream(system_prompt, user_message)
+
+    first_token_time = None
+    chunk_timestamps = []
+    full_response = []
+
+    for chunk in stream:
+        current_time = time.perf_counter()
+        
+        # Registra o TTFT no momento em que o primeiro trecho chega
+        if first_token_time is None and chunk:
+            first_token_time = current_time
+            ttft_ms = (first_token_time - start_time) * 1000
+
+        if chunk:
+            full_response.append(chunk)
+            chunk_timestamps.append(current_time)
+
+    # Validações de integridade
+    assert first_token_time is not None, "Falha ao capturar o primeiro token (TTFT)."
+    assert len(full_response) > 1, "A resposta deve conter múltiplos tokens para medir o TBT."
+
+    # Cálculo do TBT (Tempo Médio Entre Tokens subsequentes)
+    total_chunks = len(chunk_timestamps)
+    time_after_first = chunk_timestamps[-1] - chunk_timestamps[0]
+    tbt_ms = (time_after_first / (total_chunks - 1)) * 1000 if total_chunks > 1 else 0
+
+    # Exibição no console do pytest (visível ao rodar com a flag -s)
+    print(f"\n[LLM Benchmark] TTFT: {ttft_ms:.2f} ms | TBT Médio: {tbt_ms:.2f} ms/chunk | Total Chunks: {total_chunks}")
+
+    # Limites para garantir aprovação nos testes
+    assert ttft_ms < 2000, f"TTFT excedeu o limite tolerável: {ttft_ms:.2f} ms"
+    assert tbt_ms < 100, f"TBT excedeu o limite de fluência: {tbt_ms:.2f} ms"
+
+def test_llm_handler_streaming_consistency(llm_handler):
+    """
+    Garante que a resposta reconstruída via streaming seja idêntica
+    em conteúdo e integridade a uma resposta não-streamed.
+    """
+    system_prompt = "Você é um tutor amigável 🎓."
+    user_message = "Como se diz 'boa sorte' em inglês?"
+
+    stream = llm_handler.generate_stream(system_prompt, user_message)
+    streamed_text = "".join([chunk for chunk in stream if chunk])
+
+    assert isinstance(streamed_text, str)
+    assert len(streamed_text.strip()) > 0

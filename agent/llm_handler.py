@@ -112,3 +112,13 @@ Has previous sessions: {has_previous_sessions}
         except Exception as e:
             print(f"Error generating LLM response: {e}")
             return "Sorry, there was an error processing your message. Please try again.", None
+
+    def generate_stream(self, system_prompt: str, user_message: str):
+        """Gera a resposta em modo streaming (token a token) via LangChain ChatGroq."""
+        messages = [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=user_message)
+        ]
+        for chunk in self.llm.stream(messages):
+            if chunk.content:
+                yield chunk.content 
