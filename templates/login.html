@@ -1,56 +1,100 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - COMUM</title>
-    
+
     <!-- Fonte externa -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+        rel="stylesheet"
+    >
 
     <!-- Arquivo CSS local -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/login.css') }}"
+    >
 </head>
+
 <body>
 
     <div class="ambient-glow"></div>
 
     <div class="login-card">
-        <h2 class="brand-title">COMUM</h2>
-        <p class="brand-subtitle">Plataforma de Aprendizagem Interativa</p>
 
+        <h2 class="brand-title">COMUM</h2>
+        <p class="brand-subtitle">
+            Plataforma de Aprendizagem Interativa
+        </p>
+
+        <!-- Mensagem de erro -->
         {% if error %}
-            <div class="error-msg">
-                <span>⚠️</span> {{ error }}
+            <div class="error-msg" role="alert">
+                <span aria-hidden="true">⚠️</span>
+                <span>{{ error }}</span>
             </div>
         {% endif %}
 
-        <form action="/login" method="POST">
+        <form action="{{ url_for('login') }}" method="POST">
+
             <!-- Seletor de Perfil -->
             <div class="role-selector">
+
                 <div class="role-option">
-                    <input type="radio" id="role-student" name="role" value="student" checked>
+                    <input
+                        type="radio"
+                        id="role-student"
+                        name="role"
+                        value="student"
+                        {% if role != 'teacher' %}checked{% endif %}
+                    >
                     <label for="role-student">Aluno</label>
                 </div>
+
                 <div class="role-option">
-                    <input type="radio" id="role-teacher" name="role" value="teacher">
+                    <input
+                        type="radio"
+                        id="role-teacher"
+                        name="role"
+                        value="teacher"
+                        {% if role == 'teacher' %}checked{% endif %}
+                    >
                     <label for="role-teacher">Professor</label>
                 </div>
+
             </div>
 
             <!-- Nome de Usuário -->
             <div class="input-group">
                 <label for="username">Nome de Usuário</label>
-                <input type="text" id="username" name="username" placeholder="Digite seu usuário..." autocomplete="off" required>
+
+                <input
+                    type="text"
+                    id="username"
+                    name="username"
+                    placeholder="Digite seu usuário..."
+                    autocomplete="username"
+                    value="{{ username or '' }}"
+                    required
+                >
             </div>
 
-            <button type="submit" class="btn-submit">Entrar no Sistema</button>
+            <!-- Botão de Login -->
+            <button type="submit" class="btn-submit">
+                Entrar no Sistema
+            </button>
+
         </form>
+
     </div>
 
     <!-- Arquivo JavaScript local -->
     <script src="{{ url_for('static', filename='js/login.js') }}"></script>
+
 </body>
 </html>

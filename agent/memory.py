@@ -1,21 +1,38 @@
 import os
 import random
 import string
+import httpx
+import logging
 from datetime import datetime, timezone
 from pathlib import Path
 from supabase import create_client, Client
 
+logger = logging.getLogger(__name__)
+
+
+class DatabaseUnavailableError(Exception):
+    """Erro lançado quando o Supabase está indisponível."""
+    pass
 
 class MemoryManager:
     def __init__(self, teachers_folder="data/teachers"):
         self.teachers_folder = Path(teachers_folder)
-        
-        url: str = os.getenv("SUPABASE_URL")
-        key: str = os.getenv("SUPABASE_KEY")
+
+        url = os.getenv("SUPABASE_URL")
+        key = os.getenv("SUPABASE_KEY")
+
         if not url or not key:
-            raise ValueError("SUPABASE_URL e SUPABASE_KEY não foram encontrados nas variáveis de ambiente.")
-            
-        self.supabase: Client = create_client(url, key)
+            raise ValueError(
+                "SUPABASE_URL e SUPABASE_KEY não foram encontrados "
+                "nas variáveis de ambiente."
+            )
+
+        try:
+            self.supabase: Client = create_client(url, key)
+        except (httpx.RequestError, OSError) as e:
+            raise DatabaseUnavailableError(
+                "Não foi possível inicializar a conexão com o Supabase."
+            ) from e
 
     @staticmethod
     def _normalize_level(level: str) -> str:
@@ -56,32 +73,42 @@ class MemoryManager:
         return []
 
     def _ensure_user(self, user_id: str, role: str = "student"):
-        """Garante que o usuário e seu perfil existam no banco."""
-        if not user_id or not str(user_id).strip():
-            return
-            
-        user_id = str(user_id).strip().lower()
-
-        res = self.supabase.table("users").select("id").eq("id", user_id).execute()
-        if not res.data:
-            # 1. Cria na tabela pai 'users'
-            self.supabase.table("users").insert({
-                "id": user_id,
-                "role": role
-            }).execute()
-
-            # 2. Cria na tabela correspondente ao perfil com nível padronizado
-            if role == "student":
-                self.supabase.table("students").insert({
-                    "user_id": user_id,
-                    "level": "a1",
-                    "taught_words": []
-                }).execute()
-            elif role == "teacher":
-                self.supabase.table("teachers").insert({
-                    "user_id": user_id,
-                    "department": "Inglês"
-                }).execute()
+            """Garante que o usuário e seu perfil existam no banco."""
+            if not user_id or not str(user_id).strip():
+                return
+    
+            user_id = str(user_id).strip().lower()
+    
+            res = self._execute(
+                self.supabase.table("users")
+                .select("id")
+                .eq("id", user_id)
+            )
+    
+            if not res.data:
+                self._execute(
+                    self.supabase.table("users").insert({
+                        "id": user_id,
+                        "role": role
+                    })
+                )
+    
+                if role == "student":
+                    self._execute(
+                        self.supabase.table("students").insert({
+                            "user_id": user_id,
+                            "level": "a1",
+                            "taught_words": []
+                        })
+                    )
+    
+                elif role == "teacher":
+                    self._execute(
+                        self.supabase.table("teachers").insert({
+                            "user_id": user_id,
+                            "department": "Inglês"
+                        })
+                    )
 
     def update_history(self, user_id: str, message: str, role: str = "user"):
         """Adiciona uma mensagem ao histórico do usuário."""
@@ -367,8 +394,8 @@ class MemoryManager:
             if user.get("role") != "teacher":
                 return False, "Este nome de usuário pertence a uma conta de Aluno."
         else:
-            self.supabase.table("users").insert({"id": username, "role": "teacher"}).execute()
-            self.supabase.table("teachers").insert({"user_id": username, "department": department}).execute()
+            self._execute(self.supabase.table("users").insert({"id": username, "role": "teacher"}))
+            self._execute(self.supabase.table("teachers").insert({"user_id": username, "department": department}).execute())
 
         return True, {"user_id": username, "role": "teacher"}
 
@@ -527,3 +554,18 @@ class MemoryManager:
         c = res.data[0]
         c["topics"] = self._parse_topics(c.get("topics"))
         return c
+
+    def _execute(self, query):
+        try:
+            return query.execute()
+
+        except Exception as e:
+            logger.exception(
+                "Falha ao executar operação no Supabase."
+            )
+
+            raise DatabaseUnavailableError(
+                "Não foi possível acessar o banco de dados. "
+                "O serviço pode estar temporariamente indisponível. "
+                "Tente novamente mais tarde."
+            ) from e
