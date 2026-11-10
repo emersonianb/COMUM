@@ -1,6 +1,7 @@
 import pytest
 import pymupdf as fitz
 from agent.material_manager import MaterialManager
+from unittest.mock import patch
 
 class FakeFormatter:
     def format(self, raw_text):
@@ -8,7 +9,17 @@ class FakeFormatter:
 
 @pytest.fixture
 def material_manager(memory_manager):
-    return MaterialManager(memory_manager=memory_manager, formatter=FakeFormatter())
+    with patch(
+        "agent.material_manager.HuggingFaceEndpointEmbeddings"
+    ) as mock_embeddings:
+        mock_embeddings.return_value.embed_query.return_value = [0.1] * 384
+
+        manager = MaterialManager(
+            memory_manager=memory_manager,
+            formatter=FakeFormatter()
+        )
+
+        yield manager
 
 @pytest.fixture
 def user_id():

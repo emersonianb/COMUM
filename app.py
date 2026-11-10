@@ -362,23 +362,23 @@ def brainstorm_page(class_id):
 
     user_id = session.get("user_id")
 
-    if not user_id:
+    if not user_id or session.get("role") != "student":
         return redirect(url_for("login"))
 
     try:
         class_data = get_tutor().memory.get_class_by_id(class_id)
 
-        if class_data:
-            title = class_data.get("title", f"Aula {class_id}")
-            topics = class_data.get("topics", [])
-        else:
-            roadmap = get_content_agent().build_brainstorm_roadmap(
-                user_id=user_id,
-                teacher_id="prof_01",
-                class_id=class_id
+        if not class_data:
+            return "Aula não encontrada.", 404
+
+        title = class_data.get("title") or f"Aula {class_id}"
+        topics = class_data.get("topics") or []
+
+        if not isinstance(topics, list):
+            app.logger.error(
+                "Formato inválido de tópicos para a aula %s", class_id
             )
-            title = roadmap.get("title", f"Aula {class_id}")
-            topics = roadmap.get("topics", [])
+            return "Não foi possível carregar os tópicos desta aula.", 500
 
         return render_template(
             "brainstorm.html",
@@ -474,6 +474,7 @@ def salvar_diagnostico():
             }), 400
 
         session["topics_queue"] = topics_queue
+        session["chat_started"] = False
 
         return jsonify({
             "success": True,
@@ -494,6 +495,7 @@ def salvar_diagnostico():
 def api_chat():
 
     user_id = session.get("user_id")
+    is_new_session = not session.get("chat_started", False)
 
     if not user_id:
         return jsonify({
@@ -519,8 +521,11 @@ def api_chat():
             user_id=user_id,
             message=user_message,
             class_id=class_id,
-            topics_queue=topics_queue
+            topics_queue=topics_queue,
+            is_new_session=is_new_session
         )
+
+        session["chat_started"] = True
 
         return jsonify({
             "status": "success",
@@ -717,7 +722,8 @@ def preview_turma_content(turma_code):
             "turma_id": turma_id,
             "suggested_title": ai_result.get("title", ""),
             "suggested_description": ai_result.get("description", ""),
-            "suggested_topics": topics_formatted
+            "suggested_topics": topics_formatted,
+            "raw_material_text": text_to_process
         }
 
         return render_template(
@@ -741,34 +747,45 @@ def preview_turma_content(turma_code):
 @app.route("/teacher/turma/<turma_code>/save-content", methods=["POST"])
 @teacher_required
 def save_turma_content(turma_code):
-
     teacher_id = session["user_id"]
-
     turma_id = request.form.get("turma_id")
     title = request.form.get("title", "").strip()
     description = request.form.get("description", "").strip()
     topics = parse_topics(request.form.get("topics", "").strip())
+    raw_material_text = request.form.get("raw_material_text", "").strip()
 
     if title and turma_id:
         try:
-            get_tutor().memory.add_turma_class_content(
+            tutor = get_tutor()
+
+            # 1. Salva os dados da aula
+            saved_class = tutor.memory.add_turma_class_content(
                 teacher_id,
                 turma_id,
                 title,
                 description,
                 topics
             )
-            flash(
-                "Aula gravada e adicionada à turma com sucesso!",
-                "success"
-            )
+
+            # 2. Obtém o ID da aula criada
+            class_id = saved_class["id"]
+
+            # 3. Salva o conteúdo original para recuperação pelo RAG
+            if raw_material_text:
+                tutor.material_manager.add_material(
+                    user_id=teacher_id,
+                    category="geral",
+                    raw_text=raw_material_text,
+                    class_id=class_id
+                )
+
+            flash("Aula gravada e adicionada à turma com sucesso!", "success")
 
         except Exception:
-            app.logger.exception("Erro ao salvar aula.")
-            flash("Não foi possível salvar a aula.", "error")
+            app.logger.exception("Erro ao salvar aula ou material.")
+            flash("Não foi possível salvar a aula e seu material.", "error")
 
     return redirect(url_for("view_turma", turma_code=turma_code))
-
 
 @app.route(
     "/teacher/turma/<turma_code>/class/<class_id>/delete",

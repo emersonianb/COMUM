@@ -148,6 +148,7 @@
 
             <form action="{{ url_for('preview_turma_content', turma_code=turma.code) }}" method="POST" enctype="multipart/form-data">
                 <input type="hidden" name="turma_id" value="{{ turma.id }}">
+                <textarea name="raw_material_text" hidden>{{ preview_data.raw_material_text }}</textarea>
 
                 <!-- Upload de PDF -->
                 <div class="input-group" style="background: rgba(252, 158, 79, 0.05); padding: 14px; border-radius: 12px; border: 1px dashed var(--primary);">

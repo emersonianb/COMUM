@@ -6,8 +6,9 @@ from pathlib import Path
 import pymupdf as fitz
 from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage
-from langchain_huggingface import HuggingFaceEndpointEmbeddings
-
+from google import genai
+from google.genai import types
+import numpy as np
 
 class MaterialFormatter:
     def __init__(self, model="openai/gpt-oss-120b"):
@@ -55,10 +56,34 @@ class MaterialManager:
         self.memory_manager = memory_manager
         self.formatter = formatter
         # Modelo atualizado conforme as diretrizes do LangChain
-        self.embeddings = HuggingFaceEndpointEmbeddings(
-            model="sentence-transformers/all-MiniLM-L6-v2",
-            huggingfacehub_api_token=os.getenv("HUGGINGFACEHUB_API_TOKEN")
+        self.client = genai.Client(
+            api_key=os.getenv("GEMINI_API_KEY")
         )
+
+    def _generate_embedding(self, text, task_type="RETRIEVAL_DOCUMENT"):
+        """Gera embeddings usando Gemini com 384 dimensões."""
+
+        response = self.client.models.embed_content(
+            model="gemini-embedding-001",
+            contents=text,
+            config=types.EmbedContentConfig(
+                task_type=task_type,
+                output_dimensionality=384
+            )
+        )
+
+        vector = np.array(
+            response.embeddings[0].values,
+            dtype=np.float32
+        )
+
+        # Normaliza o vetor
+        norm = np.linalg.norm(vector)
+
+        if norm > 0:
+            vector = vector / norm
+
+        return vector.tolist()
 
     def _extract_text_from_file(self, file_path):
         """Lê e extrai o texto de arquivos .pdf, .txt ou .md."""
@@ -79,7 +104,7 @@ class MaterialManager:
         else:
             raise ValueError(f"Formato '{ext}' não suportado. Use .pdf, .txt ou .md.")
 
-    def add_material(self, user_id, category, raw_text):
+    def add_material(self, user_id, category, raw_text, class_id=None):
         """Formata o texto bruto, gera o embedding vetorial e salva no Supabase."""
         category_clean = category.lower()
         self.memory_manager._ensure_user(user_id)
@@ -93,14 +118,18 @@ class MaterialManager:
         content = structured.get("conteudo", raw_text)
 
         # Gera o vetor vetorial para permitir busca por RAG
-        vector = self.embeddings.embed_query(content)
+        vector = self._generate_embedding(
+            content,
+            task_type="RETRIEVAL_DOCUMENT"
+        )
 
         res = self.memory_manager.supabase.table("user_materials").insert({
             "user_id": user_id,
             "category": category_clean,
             "topic": topic,
             "content": content,
-            "embedding": vector
+            "embedding": vector,
+            "class_id": class_id
         }).execute()
 
         material_id = res.data[0]["id"] if res.data else None
@@ -117,13 +146,25 @@ class MaterialManager:
         raw_text = self._extract_text_from_file(file_path)
         return self.add_material(user_id, category, raw_text)
 
-    def get_materials_by_category(self, user_id, category):
-        """Recupera os materiais cadastrados de uma categoria específica para o usuário."""
-        res = (
+    def get_materials_by_category(self, user_id, category, class_id=None):
+        """Recupera materiais pessoais e materiais compartilhados da aula."""
+
+        query = (
             self.memory_manager.supabase.table("user_materials")
             .select("id, topic, content, created_at")
-            .eq("user_id", user_id)
-            .eq("category", category.lower())
+        )
+
+        if class_id:
+            query = query.or_(
+                f"user_id.eq.{user_id},class_id.eq.{class_id}"
+            )
+        else:
+            query = query.eq("user_id", user_id)
+
+        res = (
+            query
+            .in_("category", [category.lower(), "geral"])
             .execute()
         )
+
         return res.data or []
