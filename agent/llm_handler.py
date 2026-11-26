@@ -185,4 +185,14 @@ class LLMHandler:
         ]
         for chunk in self.llm.stream(messages):
             if chunk.content:
-                yield chunk.content 
+                yield chunk.content
+
+    def generate_internal(self, system_prompt: str, user_message: str):
+        messages = [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=user_message)
+        ]
+    
+        response = self.llm.invoke(messages)
+    
+        return response.content.strip()
