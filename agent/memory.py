@@ -234,6 +234,7 @@ class MemoryManager:
             }
         return progress.get(class_id, {}) if class_id else progress
 
+    
     def update_topic_progress(
         self,
         user_id: str,
@@ -241,10 +242,11 @@ class MemoryManager:
         topic: str,
         status: str,
         confidence: float = None,
-        increment_attempt: bool = False
+        increment_attempt: bool = False,
+        reset_attempts: bool = False
     ):
         self._ensure_user(user_id)
-
+    
         existing = (
             self.supabase.table("topic_progress")
             .select("attempts")
@@ -253,30 +255,40 @@ class MemoryManager:
             .eq("topic", topic)
             .execute()
         )
-
+    
         current_attempts = (
             existing.data[0].get("attempts", 0)
             if existing.data else 0
         )
-
-        attempts = current_attempts + 1 if increment_attempt else current_attempts
-
+    
+        current_attempts = int(current_attempts or 0)
+    
+        if reset_attempts:
+            attempts = 0
+        elif increment_attempt:
+            attempts = current_attempts + 1
+        else:
+            attempts = current_attempts
+    
         payload = {
             "user_id": user_id,
             "class_id": class_id,
             "topic": topic,
             "status": status,
             "attempts": attempts,
-            "last_review": datetime.now(timezone.utc).isoformat()
+            "last_review": datetime.now(
+                timezone.utc
+            ).isoformat()
         }
-
+    
         if confidence is not None:
             payload["confidence"] = confidence
-
+    
         self.supabase.table("topic_progress").upsert(
             payload,
             on_conflict="user_id,class_id,topic"
         ).execute()
+
 
     def get_pending_topics(self, user_id: str, class_id: str):
         class_info = self.get_class_by_id(class_id)
