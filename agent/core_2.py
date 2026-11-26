@@ -165,7 +165,11 @@ class AgenticTutor:
             self.memory.update_learning_state(user_id, current_category=current_category)
 
         # 4. Lê estado, histórico e progresso no Supabase
-        context = self.memory.get_context(user_id)
+        context = (
+            ""
+            if is_new_session
+            else self.memory.get_context(user_id)
+        )
         learning_state = self.memory.get_learning_state(user_id)
         class_progress = self.memory.get_progress(user_id, class_id)
         current_category = current_category or learning_state.get("current_category")
@@ -304,19 +308,39 @@ class AgenticTutor:
         # 9. Gera a resposta enviando o scaffolding_prompt isolado ao LLMHandler
         response_text, new_word = self.llm.generate(
             context=context,
-            message=(
-                f"Mensagem original do aluno: {message}\n\n"
-                f"Orientação do agente interpretador: {instruction}"
-                if instruction else message
-            ),
+            message=f"""
+            TÓPICO PEDAGÓGICO ATUAL:
+            {topicos_foco}
+        
+            MENSAGEM DO ESTUDANTE:
+            {message}
+        
+            AVALIAÇÃO DA RESPOSTA:
+            {evaluation}
+        
+            INTENÇÃO IDENTIFICADA:
+            {action}
+        
+            ORIENTAÇÃO DO AGENTE INTERPRETADOR:
+            {instruction or "Nenhuma orientação adicional."}
+        
+            RESTRIÇÕES:
+            - Trabalhe exclusivamente o tópico informado.
+            - Não introduza outros conteúdos.
+            - Respeite o nível de scaffolding recebido.
+            - Utilize português brasileiro nas explicações.
+            - Se a solicitação for uma revisão genérica,
+              inicie uma atividade diretamente relacionada
+              ao tópico informado.
+            """,
             scaffolding_prompt=scaffolding_instruction,
             materials_context=materials_str,
             level=level,
             current_module=current_module,
-            last_topic=last_topic,
+            last_topic=topicos_foco,
             previous_words=previous_words,
             previous_topics=previous_topics,
-            has_previous_sessions=len(context) > 1
+            has_previous_sessions=bool(context)
         )
 
         if reset_after_response and response_text:
