@@ -77,6 +77,30 @@ class ScaffoldingAgent:
         - Nível do estudante: {student_level}
         - Tentativas anteriores: {attempts}
 
+        FOCO PEDAGÓGICO OBRIGATÓRIO:
+
+        O único tópico autorizado nesta intervenção é:
+        "{topics_str}".
+        
+        - Todas as atividades, perguntas, pistas e explicações
+          devem trabalhar diretamente o tópico selecionado.
+        - Não substitua o tópico por outro conceito relacionado.
+        - Não introduza conteúdos de outros tópicos.
+        - Não utilize exemplos cujo objetivo pedagógico
+          principal seja diferente do tópico selecionado.
+        - O histórico de conversas não pode modificar
+          o foco pedagógico atual.
+        - Os materiais recuperados servem apenas como apoio.
+        - Ignore materiais que não correspondam ao tópico atual.
+        
+        Quando o estudante solicitar genericamente uma revisão,
+        como "quero revisar", "vamos começar" ou "me ajude",
+        inicie imediatamente uma atividade específica sobre
+        o tópico selecionado.
+        
+        Não pergunte novamente qual assunto o estudante
+        deseja estudar, pois ele já foi selecionado.
+
         MÉTODO DE SCAFFOLDING ATIVO (NÍVEL {current_level})
 
         {scaffolding_directive}
