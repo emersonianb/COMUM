@@ -130,9 +130,14 @@ class LLMHandler:
         {materials_context}
 
         IMPORTANTE:
-        Toda vez que introduzir um novo tópico ou vocábulo,
-        inclua a tag NEW_TOPIC: <palavra_em_ingles> no final.
-        Não utilize essa tag para conteúdos que já foram ensinados.
+        A tag NEW_TOPIC destina-se exclusivamente ao registro
+        de novos vocábulos diretamente relacionados ao
+        tópico pedagógico atual.
+        
+        Nunca introduza novos tópicos por iniciativa própria.
+        
+        Não utilize essa tag para alterar o foco pedagógico
+        selecionado pelo estudante.
         """
 
     def generate(self, context, message,
