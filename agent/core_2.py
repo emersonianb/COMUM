@@ -60,17 +60,14 @@ class AgenticTutor:
         INTENÇÃO | AVALIAÇÃO | INSTRUÇÃO
         """
 
-        result, _ = self.llm.generate(
-            context="",
-            message=prompt,
-            scaffolding_prompt="",
-            materials_context="",
-            level="a1",
-            current_module="default",
-            last_topic="none",
-            previous_words=[],
-            previous_topics=[],
-            has_previous_sessions=True
+        result = self.llm.generate_internal(
+            system_prompt=(
+                "Você é um agente interno de classificação "
+                "pedagógica. Não converse com o estudante. "
+                "Siga rigorosamente o formato solicitado. "
+                "Escreva a orientação em português brasileiro."
+            ),
+            user_message=prompt
         )
 
         try:
@@ -188,33 +185,50 @@ class AgenticTutor:
         )
 
 
+        
         # 6. Controle do scaffolding
         topic_key = next(
             (
                 topic for topic in class_progress
-                if topic.strip().casefold() == topicos_foco.strip().casefold()
+                if topic.strip().casefold()
+                == topicos_foco.strip().casefold()
             ),
             topicos_foco
         )
-
+        
         topic_info = class_progress.get(topic_key, {})
-        attempts = topic_info.get("attempts", 0)
+        attempts = int(topic_info.get("attempts") or 0)
+        
+        if is_new_session:
+            action = "NOVO_TOPICO"
+        
+        elif last_question and topico_solicitado:
+            if last_topic and (
+                topico_solicitado.casefold()
+                != last_topic.casefold()
+            ):
+                action = "NOVO_TOPICO"
+        
         attempts_before = attempts
-
-        print("\n========== DEBUG COMUM ==========")
-        print("MENSAGEM DO ALUNO:", message)
-        print("AÇÃO:", action)
-        print("AVALIAÇÃO:", evaluation)
-        print("INSTRUÇÃO:", instruction)
-        print("TÓPICO ATUAL:", topicos_foco)
-        print("ÚLTIMO TÓPICO SALVO:", last_topic)
-        print("TENTATIVAS ANTERIORES:", attempts)
-        print("================================\n")
-
-        if action == "CONTINUAR":
+        reset_after_response = False
+        
+        if action == "NOVO_TOPICO":
+        
+            attempts = 0
+            attempts_before = 0
+        
+            self.memory.update_topic_progress(
+                user_id=user_id,
+                class_id=class_id,
+                topic=topic_key,
+                status="in_progress",
+                reset_attempts=True
+            )
+        
+        elif action == "CONTINUAR":
+        
             if evaluation == "INCORRETA":
-                attempts += 1
-
+        
                 self.memory.update_topic_progress(
                     user_id=user_id,
                     class_id=class_id,
@@ -222,13 +236,43 @@ class AgenticTutor:
                     status="in_progress",
                     increment_attempt=True
                 )
-
-            elif evaluation in ["CORRETA", "NAO_AVALIAVEL"]:
+        
+                attempts += 1
+        
+                if self.scaffolding.determine_level(
+                    attempts_before
+                ) == 3:
+                    reset_after_response = True
+        
+            elif evaluation == "CORRETA":
+        
+                attempts = 0
+                attempts_before = 0
+        
+                self.memory.update_topic_progress(
+                    user_id=user_id,
+                    class_id=class_id,
+                    topic=topic_key,
+                    status="in_progress",
+                    reset_attempts=True
+                )
+        
+            elif evaluation == "NAO_AVALIAVEL":
+                # Dúvidas não são contabilizadas como erros.
                 pass
+        
+        print("\n========== DEBUG COMUM ==========")
+        print("MENSAGEM:", message)
+        print("AÇÃO:", action)
+        print("AVALIAÇÃO:", evaluation)
+        print("TÓPICO:", topicos_foco)
+        print("TENTATIVAS ANTERIORES:", attempts_before)
+        print(
+            "NÍVEL DE SCAFFOLDING:",
+            self.scaffolding.determine_level(attempts_before)
+        )
+        print("================================\n")
 
-        elif action == "NOVO_TOPICO":
-            attempts = 0
-            attempts_before = 0
 
         # 7. Busca materiais de apoio (RAG / Banco)
         materials_str = f"🎯 FOCO OBRIGATÓRIO DA AULA: {topicos_foco}\n"
@@ -275,6 +319,18 @@ class AgenticTutor:
             has_previous_sessions=len(context) > 1
         )
 
+        if reset_after_response and response_text:
+            if not response_text.startswith(
+                "Ocorreu um erro ao processar"
+            ):
+                self.memory.update_topic_progress(
+                    user_id=user_id,
+                    class_id=class_id,
+                    topic=topic_key,
+                    status="in_progress",
+                    reset_attempts=True
+                )
+
         # 10. Atualiza o histórico no banco de dados
         self.memory.update_history(user_id, f"Tutor: {response_text}", role="tutor")
 
@@ -285,7 +341,6 @@ class AgenticTutor:
             if new_word.lower() not in previous_words:
                 self.memory.add_taught_word(user_id, new_word)
             self.memory.update_topic_progress(user_id, class_id, new_word.lower(), "presented")
-            self.memory.update_learning_state(user_id, last_topic=new_word.lower())
 
         if current_category:
             try:
